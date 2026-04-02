@@ -39,6 +39,11 @@ Open `LumiBand_OSC.qxw` in QLC+.
 - Switch to the **Virtual Console** tab
 - Use the **Red / Green / Blue / Brightness** sliders or the scene buttons
 
+> **Important:** The LumiBand app's master brightness slider (main screen) is
+> **ignored** while DMX is active. The DMX Brightness channel (ch +3) has full
+> control — 0 = blackout, 255 = maximum. Set the QLC+ Brightness slider to a
+> non-zero value before expecting any output.
+
 ---
 
 ## OSC address format
@@ -58,6 +63,7 @@ The LumiBand app maps channels relative to the configured **DMX start address**
 | +1 | Green |
 | +2 | Blue |
 | +3 | Brightness |
+| +4 | Strobe (0 = off, 1–255 = speed) |
 
 ---
 
