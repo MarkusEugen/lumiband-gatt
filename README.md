@@ -56,6 +56,10 @@ Example — pure red at 50 % brightness:
 [0x03, 255, 0, 0, 128]
 ```
 
+> **Note:** the Brightness byte is applied directly to the hardware. It is not
+> capped by any brightness limit set in the LumiBand app — you have full
+> control from 0 (off) to 255 (maximum hardware output).
+
 ---
 
 ### Set brightness only
