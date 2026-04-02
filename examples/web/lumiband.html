@@ -24,11 +24,11 @@
     <button class="color-btn" style="background:#0080ff" onclick="setColor(0,128,255)"></button>
     <button class="color-btn" style="background:#ff8800" onclick="setColor(255,136,0)"></button>
     <button class="color-btn" style="background:#ffffff;border:1px solid #ccc" onclick="setColor(255,255,255)"></button>
-    <button class="color-btn" style="background:#111111" onclick="setColor(0,0,0,0)"></button>
+    <button class="color-btn" style="background:#111111" onclick="setBrightness(0)"></button>
   </div>
 
   <label>Brightness</label>
-  <input type="range" min="0" max="255" value="255" oninput="setBrightness(this.value)">
+  <input type="range" id="brightness" min="0" max="255" value="255" oninput="setBrightness(this.value)">
 
   <div>
     <button onclick="setPreset(0)">Classic</button>
@@ -78,14 +78,15 @@
     }
   };
 
-  async function setColor(r, g, b, brightness = 255) {
+  async function setColor(r, g, b) {
     if (!cmdChar) return;
+    const brightness = parseInt(document.getElementById('brightness').value);
     await cmdChar.writeValueWithoutResponse(new Uint8Array([0x03, r, g, b, brightness]));
   }
 
   async function setBrightness(v) {
     if (!brightChar) return;
-    await brightChar.writeValueWithResponse(new Uint8Array([parseInt(v)]));
+    await brightChar.writeValueWithoutResponse(new Uint8Array([parseInt(v)]));
   }
 
   async function setPreset(index) {
