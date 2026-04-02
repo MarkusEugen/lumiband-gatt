@@ -166,6 +166,7 @@ configuration.
 | Web | [Web Bluetooth API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Bluetooth_API) | [examples/web/lumiband.html](examples/web/lumiband.html) |
 | Swift | CoreBluetooth | [examples/swift/LumiBandController.swift](examples/swift/LumiBandController.swift) |
 | Android (Kotlin) | android.bluetooth | [examples/android/LumiBandController.kt](examples/android/LumiBandController.kt) |
+| QLC+ (OSC) | [QLC+](https://qlcplus.org) | [examples/qlcplus/](examples/qlcplus/) |
 
 ---
 

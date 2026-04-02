@@ -1,0 +1,276 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE Workspace>
+<Workspace xmlns="http://www.qlcplus.org/Workspace" CurrentWindow="VirtualConsole">
+ <Creator>
+  <Name>Q Light Controller Plus</Name>
+  <Version>4.12.8</Version>
+  <Author>LumiBand</Author>
+ </Creator>
+ <Engine>
+  <InputOutputMap>
+   <BeatGenerator BPMType="Disabled"/>
+   <!--
+     ════════════════════════════════════════════════════════════════════
+     STEP 1 — After loading, open the I/O panel and set
+              Universe 1 Output → OSC  with:
+                Output Address : 192.168.0.255  (subnet broadcast)
+                Output Port    : 9000           (QLC+ default — no change needed)
+     STEP 2 — Press ▶ Operate Mode.
+     STEP 3 — Click "White" or move a slider.
+
+     OSC paths sent (Universe 1, addresses 1–4):
+       /0/dmx/0  →  Red         (float 0–1)
+       /0/dmx/1  →  Green       (float 0–1)
+       /0/dmx/2  →  Blue        (float 0–1)
+       /0/dmx/3  →  Brightness  (float 0–1)
+
+     LumiBand app start address must be 1.
+     ════════════════════════════════════════════════════════════════════
+   -->
+   <Universe Name="Universe 1" ID="0" PassThrough="0">
+    <Output Plugin="OSC" UID="OSC" Line="0"/>
+   </Universe>
+  </InputOutputMap>
+
+  <!-- 4 × Generic Dimmer — no fixture file install needed -->
+  <Fixtures>
+   <Fixture>
+    <Manufacturer>Generic</Manufacturer>
+    <Model>Generic Dimmer</Model>
+    <ID>0</ID>
+    <Name>LumiBand Red</Name>
+    <Universe>0</Universe>
+    <Address>0</Address>
+    <Channels>1</Channels>
+    <Mode>Default</Mode>
+   </Fixture>
+   <Fixture>
+    <Manufacturer>Generic</Manufacturer>
+    <Model>Generic Dimmer</Model>
+    <ID>1</ID>
+    <Name>LumiBand Green</Name>
+    <Universe>0</Universe>
+    <Address>1</Address>
+    <Channels>1</Channels>
+    <Mode>Default</Mode>
+   </Fixture>
+   <Fixture>
+    <Manufacturer>Generic</Manufacturer>
+    <Model>Generic Dimmer</Model>
+    <ID>2</ID>
+    <Name>LumiBand Blue</Name>
+    <Universe>0</Universe>
+    <Address>2</Address>
+    <Channels>1</Channels>
+    <Mode>Default</Mode>
+   </Fixture>
+   <Fixture>
+    <Manufacturer>Generic</Manufacturer>
+    <Model>Generic Dimmer</Model>
+    <ID>3</ID>
+    <Name>LumiBand Brightness</Name>
+    <Universe>0</Universe>
+    <Address>3</Address>
+    <Channels>1</Channels>
+    <Mode>Default</Mode>
+   </Fixture>
+  </Fixtures>
+
+  <Functions>
+   <Function ID="0" Type="Scene" Name="White" Hidden="False" Path="">
+    <Speed FadeIn="0" FadeOut="0" Duration="0"/>
+    <ChannelGroupsVal/>
+    <FixtureVal ID="0">0,255</FixtureVal>
+    <FixtureVal ID="1">0,255</FixtureVal>
+    <FixtureVal ID="2">0,255</FixtureVal>
+    <FixtureVal ID="3">0,255</FixtureVal>
+   </Function>
+   <Function ID="1" Type="Scene" Name="Red" Hidden="False" Path="">
+    <Speed FadeIn="0" FadeOut="0" Duration="0"/>
+    <ChannelGroupsVal/>
+    <FixtureVal ID="0">0,255</FixtureVal>
+    <FixtureVal ID="1">0,0</FixtureVal>
+    <FixtureVal ID="2">0,0</FixtureVal>
+    <FixtureVal ID="3">0,255</FixtureVal>
+   </Function>
+   <Function ID="2" Type="Scene" Name="Green" Hidden="False" Path="">
+    <Speed FadeIn="0" FadeOut="0" Duration="0"/>
+    <ChannelGroupsVal/>
+    <FixtureVal ID="0">0,0</FixtureVal>
+    <FixtureVal ID="1">0,255</FixtureVal>
+    <FixtureVal ID="2">0,0</FixtureVal>
+    <FixtureVal ID="3">0,255</FixtureVal>
+   </Function>
+   <Function ID="3" Type="Scene" Name="Blue" Hidden="False" Path="">
+    <Speed FadeIn="0" FadeOut="0" Duration="0"/>
+    <ChannelGroupsVal/>
+    <FixtureVal ID="0">0,0</FixtureVal>
+    <FixtureVal ID="1">0,0</FixtureVal>
+    <FixtureVal ID="2">0,255</FixtureVal>
+    <FixtureVal ID="3">0,255</FixtureVal>
+   </Function>
+   <Function ID="4" Type="Scene" Name="Blackout" Hidden="False" Path="">
+    <Speed FadeIn="0" FadeOut="0" Duration="0"/>
+    <ChannelGroupsVal/>
+    <FixtureVal ID="0">0,0</FixtureVal>
+    <FixtureVal ID="1">0,0</FixtureVal>
+    <FixtureVal ID="2">0,0</FixtureVal>
+    <FixtureVal ID="3">0,0</FixtureVal>
+   </Function>
+  </Functions>
+ </Engine>
+
+ <VirtualConsole>
+  <Frame Caption="">
+   <Appearance>
+    <FrameStyle>None</FrameStyle>
+    <ForegroundColor>Default</ForegroundColor>
+    <BackgroundColor>Default</BackgroundColor>
+    <BackgroundImage>None</BackgroundImage>
+    <Font>Default</Font>
+   </Appearance>
+   <Properties>
+    <Size Width="800" Height="500"/>
+    <GrandMaster ChannelMode="Intensity" ValueMode="Reduce" SliderMode="Normal"/>
+   </Properties>
+
+   <Slider Caption="Red" ID="1" WidgetStyle="Slider" WarmupValue="0"
+           Visible="1" X="20" Y="80" Width="60" Height="250">
+    <WindowState Visible="1" X="20" Y="80" Width="60" Height="250"/>
+    <Appearance>
+     <FrameStyle>Sunken</FrameStyle>
+     <ForegroundColor>#ff0000</ForegroundColor>
+     <BackgroundColor>Default</BackgroundColor>
+     <BackgroundImage>None</BackgroundImage>
+     <Font>Default</Font>
+    </Appearance>
+    <SliderMode LevelLowLimit="0" LevelHighLimit="255" LevelValue="0"
+                LevelClickAndGoType="None" LevelSliderTickmarks="0"
+                PlaybackFunction="4294967295" OverrideResetTime="500" SoundVolume="100">Level</SliderMode>
+    <Level LowLimit="0" HighLimit="255">
+     <Channel Fixture="0">0</Channel>
+    </Level>
+   </Slider>
+
+   <Slider Caption="Green" ID="2" WidgetStyle="Slider" WarmupValue="0"
+           Visible="1" X="100" Y="80" Width="60" Height="250">
+    <WindowState Visible="1" X="100" Y="80" Width="60" Height="250"/>
+    <Appearance>
+     <FrameStyle>Sunken</FrameStyle>
+     <ForegroundColor>#00c800</ForegroundColor>
+     <BackgroundColor>Default</BackgroundColor>
+     <BackgroundImage>None</BackgroundImage>
+     <Font>Default</Font>
+    </Appearance>
+    <SliderMode LevelLowLimit="0" LevelHighLimit="255" LevelValue="0"
+                LevelClickAndGoType="None" LevelSliderTickmarks="0"
+                PlaybackFunction="4294967295" OverrideResetTime="500" SoundVolume="100">Level</SliderMode>
+    <Level LowLimit="0" HighLimit="255">
+     <Channel Fixture="1">0</Channel>
+    </Level>
+   </Slider>
+
+   <Slider Caption="Blue" ID="3" WidgetStyle="Slider" WarmupValue="0"
+           Visible="1" X="180" Y="80" Width="60" Height="250">
+    <WindowState Visible="1" X="180" Y="80" Width="60" Height="250"/>
+    <Appearance>
+     <FrameStyle>Sunken</FrameStyle>
+     <ForegroundColor>#0080ff</ForegroundColor>
+     <BackgroundColor>Default</BackgroundColor>
+     <BackgroundImage>None</BackgroundImage>
+     <Font>Default</Font>
+    </Appearance>
+    <SliderMode LevelLowLimit="0" LevelHighLimit="255" LevelValue="0"
+                LevelClickAndGoType="None" LevelSliderTickmarks="0"
+                PlaybackFunction="4294967295" OverrideResetTime="500" SoundVolume="100">Level</SliderMode>
+    <Level LowLimit="0" HighLimit="255">
+     <Channel Fixture="2">0</Channel>
+    </Level>
+   </Slider>
+
+   <Slider Caption="Bright" ID="4" WidgetStyle="Slider" WarmupValue="255"
+           Visible="1" X="280" Y="80" Width="60" Height="250">
+    <WindowState Visible="1" X="280" Y="80" Width="60" Height="250"/>
+    <Appearance>
+     <FrameStyle>Sunken</FrameStyle>
+     <ForegroundColor>#ffffff</ForegroundColor>
+     <BackgroundColor>Default</BackgroundColor>
+     <BackgroundImage>None</BackgroundImage>
+     <Font>Default</Font>
+    </Appearance>
+    <SliderMode LevelLowLimit="0" LevelHighLimit="255" LevelValue="255"
+                LevelClickAndGoType="None" LevelSliderTickmarks="0"
+                PlaybackFunction="4294967295" OverrideResetTime="500" SoundVolume="100">Level</SliderMode>
+    <Level LowLimit="0" HighLimit="255">
+     <Channel Fixture="3">0</Channel>
+    </Level>
+   </Slider>
+
+   <Button Caption="White" ID="5" Function="0" Action="Toggle"
+           Intensity="1.00000" AdjustIntensity="0" StartupIntensityOverride="-1"
+           Visible="1" X="20" Y="360" Width="80" Height="50">
+    <WindowState Visible="1" X="20" Y="360" Width="80" Height="50"/>
+    <Appearance>
+     <FrameStyle>Raised</FrameStyle>
+     <ForegroundColor>Default</ForegroundColor>
+     <BackgroundColor>Default</BackgroundColor>
+     <BackgroundImage>None</BackgroundImage>
+     <Font>Default</Font>
+    </Appearance>
+   </Button>
+
+   <Button Caption="Red" ID="6" Function="1" Action="Toggle"
+           Intensity="1.00000" AdjustIntensity="0" StartupIntensityOverride="-1"
+           Visible="1" X="120" Y="360" Width="80" Height="50">
+    <WindowState Visible="1" X="120" Y="360" Width="80" Height="50"/>
+    <Appearance>
+     <FrameStyle>Raised</FrameStyle>
+     <ForegroundColor>Default</ForegroundColor>
+     <BackgroundColor>Default</BackgroundColor>
+     <BackgroundImage>None</BackgroundImage>
+     <Font>Default</Font>
+    </Appearance>
+   </Button>
+
+   <Button Caption="Green" ID="7" Function="2" Action="Toggle"
+           Intensity="1.00000" AdjustIntensity="0" StartupIntensityOverride="-1"
+           Visible="1" X="220" Y="360" Width="80" Height="50">
+    <WindowState Visible="1" X="220" Y="360" Width="80" Height="50"/>
+    <Appearance>
+     <FrameStyle>Raised</FrameStyle>
+     <ForegroundColor>Default</ForegroundColor>
+     <BackgroundColor>Default</BackgroundColor>
+     <BackgroundImage>None</BackgroundImage>
+     <Font>Default</Font>
+    </Appearance>
+   </Button>
+
+   <Button Caption="Blue" ID="8" Function="3" Action="Toggle"
+           Intensity="1.00000" AdjustIntensity="0" StartupIntensityOverride="-1"
+           Visible="1" X="320" Y="360" Width="80" Height="50">
+    <WindowState Visible="1" X="320" Y="360" Width="80" Height="50"/>
+    <Appearance>
+     <FrameStyle>Raised</FrameStyle>
+     <ForegroundColor>Default</ForegroundColor>
+     <BackgroundColor>Default</BackgroundColor>
+     <BackgroundImage>None</BackgroundImage>
+     <Font>Default</Font>
+    </Appearance>
+   </Button>
+
+   <Button Caption="Blackout" ID="9" Function="4" Action="Toggle"
+           Intensity="1.00000" AdjustIntensity="0" StartupIntensityOverride="-1"
+           Visible="1" X="420" Y="360" Width="80" Height="50">
+    <WindowState Visible="1" X="420" Y="360" Width="80" Height="50"/>
+    <Appearance>
+     <FrameStyle>Raised</FrameStyle>
+     <ForegroundColor>Default</ForegroundColor>
+     <BackgroundColor>Default</BackgroundColor>
+     <BackgroundImage>None</BackgroundImage>
+     <Font>Default</Font>
+    </Appearance>
+   </Button>
+
+  </Frame>
+ </VirtualConsole>
+</Workspace>
