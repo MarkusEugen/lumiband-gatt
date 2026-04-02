@@ -161,9 +161,11 @@ configuration.
 | Language | Library | File |
 |----------|---------|------|
 | Python | [bleak](https://github.com/hbldh/bleak) | [examples/python/lumiband.py](examples/python/lumiband.py) |
+| Python — effect uploader | [bleak](https://github.com/hbldh/bleak) | [examples/python/upload_effect.py](examples/python/upload_effect.py) |
 | React Native | [react-native-ble-plx](https://github.com/dotintent/react-native-ble-plx) | [examples/react-native/LumiBandBLE.js](examples/react-native/LumiBandBLE.js) |
 | Web | [Web Bluetooth API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Bluetooth_API) | [examples/web/lumiband.html](examples/web/lumiband.html) |
 | Swift | CoreBluetooth | [examples/swift/LumiBandController.swift](examples/swift/LumiBandController.swift) |
+| Android (Kotlin) | android.bluetooth | [examples/android/LumiBandController.kt](examples/android/LumiBandController.kt) |
 
 ---
 
