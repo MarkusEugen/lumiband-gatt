@@ -33,6 +33,7 @@ await client.write_gatt_char(CMD, bytes([0x03, 255, 0, 0, 255]))
 | **Brightness** | `beb5483f-36e1-4688-b7f5-ea07361b26a8` | Write | Master brightness (0–255) |
 | **Status** | `beb54842-36e1-4688-b7f5-ea07361b26a8` | Read, Notify | Current mode and brightness |
 | **Effect Upload** | `beb54841-36e1-4688-b7f5-ea07361b26a8` | Write | Upload custom LED animations |
+| **Sync** | `beb54843-36e1-4688-b7f5-ea07361b26a8` | Write | Multi-device clock synchronisation |
 | **Battery Level** | `00002a19-0000-1000-8000-00805f9b34fb` | Read | Standard BLE Battery Service (0x180F) |
 
 ---
@@ -167,6 +168,95 @@ configuration.
 | Swift | CoreBluetooth | [examples/swift/LumiBandController.swift](examples/swift/LumiBandController.swift) |
 | Android (Kotlin) | android.bluetooth | [examples/android/LumiBandController.kt](examples/android/LumiBandController.kt) |
 | QLC+ (OSC) | [QLC+](https://qlcplus.org) | [examples/qlcplus/](examples/qlcplus/) |
+
+---
+
+## Multi-device Sync
+
+The **Sync** characteristic lets you lock multiple LumiBands to the same animation clock, so every band flashes, pulses, or cycles in perfect unison regardless of when each device connected.
+
+### How it works
+
+Each band maintains an internal `syncOffset` value:
+
+```
+syncOffset = groupTime − millis()
+```
+
+Once set, the band adds `syncOffset` to its local `millis()` counter whenever it needs the current position in a repeating animation cycle. All bands that received the same `groupTime` will therefore be at the same position in the cycle, even if their own clocks started at different times.
+
+### Payload
+
+Write **4 bytes** (big-endian uint32) to the Sync characteristic:
+
+```
+[T3, T2, T1, T0]   →  groupTime in milliseconds
+```
+
+| Byte | Value |
+|------|-------|
+| `T3` | most-significant byte of groupTime |
+| `T2` | — |
+| `T1` | — |
+| `T0` | least-significant byte of groupTime |
+
+`groupTime` is an arbitrary shared timestamp in milliseconds. The simplest choice is the Unix time in ms modulo 2³²; what matters is that every band receives the **same value** at approximately the same moment.
+
+### Python example (bridge node)
+
+```python
+import asyncio, struct, time
+from bleak import BleakClient
+
+SERVICE  = '4fafc201-1fb5-459e-8fcc-c5c9c331914b'
+SYNC     = 'beb54843-36e1-4688-b7f5-ea07361b26a8'
+
+async def sync_bands(addresses: list[str]) -> None:
+    group_time = int(time.monotonic() * 1000) & 0xFFFFFFFF
+    payload    = struct.pack('>I', group_time)   # big-endian uint32
+
+    async def send(addr):
+        async with BleakClient(addr) as client:
+            await client.write_gatt_char(SYNC, payload)
+
+    await asyncio.gather(*[send(a) for a in addresses])
+
+asyncio.run(sync_bands([
+    'AA:BB:CC:DD:EE:01',
+    'AA:BB:CC:DD:EE:02',
+    'AA:BB:CC:DD:EE:03',
+]))
+```
+
+`asyncio.gather` sends the payload to all bands concurrently — typical BLE write latency is <10 ms per device, so hundreds of bands stay within a single animation frame.
+
+### Deployment pattern
+
+```
+                ┌──────────────┐
+                │  Controller  │  (laptop / Raspberry Pi / phone)
+                │  QLC+ / OSC  │  sends R G B Brightness via Art-Net or OSC
+                └──────┬───────┘
+                       │ UDP broadcast
+          ┌────────────┴────────────┐
+          │                         │
+    ┌─────▼─────┐             ┌─────▼─────┐
+    │  ESP32 #1 │  BLE        │  ESP32 #2 │  BLE
+    │  bridge   ├──────┐      │  bridge   ├──────┐
+    └───────────┘      │      └───────────┘      │
+                  bands 1–50                 bands 51–100
+```
+
+1. At startup each ESP32 bridge writes the same `groupTime` to every band in its zone.
+2. The controller streams colour commands over Art-Net/OSC broadcast — one packet reaches all ESP32s simultaneously.
+3. Each ESP32 relays the colour command to its connected bands via BLE.
+4. Because every band shares the same `syncOffset`, animations stay in phase across the whole venue.
+
+### Notes
+
+- Re-sync anytime: just write a new `groupTime` to all bands. A drift of ±1 frame (16–20 ms) is imperceptible; re-syncing once per minute is more than sufficient.
+- The sync offset only affects time-based effects (presets, custom effects). Solid-colour commands (`0x03`) are instantaneous and need no sync.
+- BLE connection latency is the main source of phase error. Keeping each bridge node to ≤50 bands ensures all writes complete within a single animation frame.
 
 ---
 
