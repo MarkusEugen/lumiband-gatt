@@ -3,6 +3,8 @@
 LumiBand is a wearable LED band controlled over BLE.
 This document is everything a developer needs to control it from any platform.
 
+**LumiBand is currently in Kickstarter funding**, see this [link](https://lumicense.com)
+
 ---
 
 ## Quick start
