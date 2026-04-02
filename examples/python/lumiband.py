@@ -61,7 +61,10 @@ async def main():
     device = await find_lumiband()
 
     async with BleakClient(device) as client:
-        await client.request_mtu(512)
+        # MTU is negotiated automatically on macOS/CoreBluetooth.
+        # On Linux/BlueZ you can request it: await client.request_mtu(512)
+        if hasattr(client, 'request_mtu'):
+            await client.request_mtu(512)
 
         # Read battery level
         battery = await read_battery(client)
