@@ -43,7 +43,8 @@
   const BRIGHT  = 'beb5483f-36e1-4688-b7f5-ea07361b26a8';
   const STATUS  = 'beb54842-36e1-4688-b7f5-ea07361b26a8';
 
-  let cmdChar, brightChar;
+  let cmdChar;
+  let currentR = 255, currentG = 255, currentB = 255;
 
   if (!navigator.bluetooth) {
     document.getElementById('status').textContent =
@@ -59,8 +60,7 @@
       const server  = await device.gatt.connect();
       const service = await server.getPrimaryService(SERVICE);
 
-      cmdChar    = await service.getCharacteristic(CMD);
-      brightChar = await service.getCharacteristic(BRIGHT);
+      cmdChar = await service.getCharacteristic(CMD);
 
       // Status notifications
       const statusChar = await service.getCharacteristic(STATUS);
@@ -78,15 +78,20 @@
     }
   };
 
-  async function setColor(r, g, b) {
+  async function sendColor() {
     if (!cmdChar) return;
     const brightness = parseInt(document.getElementById('brightness').value);
-    await cmdChar.writeValueWithoutResponse(new Uint8Array([0x03, r, g, b, brightness]));
+    await cmdChar.writeValueWithoutResponse(
+      new Uint8Array([0x03, currentR, currentG, currentB, brightness]));
+  }
+
+  async function setColor(r, g, b) {
+    currentR = r; currentG = g; currentB = b;
+    await sendColor();
   }
 
   async function setBrightness(v) {
-    if (!brightChar) return;
-    await brightChar.writeValueWithoutResponse(new Uint8Array([parseInt(v)]));
+    await sendColor();
   }
 
   async function setPreset(index) {
