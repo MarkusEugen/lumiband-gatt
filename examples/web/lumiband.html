@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LumiBand Web Controller</title>
+  <style>
+    body { font-family: sans-serif; max-width: 400px; margin: 40px auto; padding: 0 20px; }
+    button { padding: 10px 20px; margin: 6px; cursor: pointer; border-radius: 8px; border: none; font-size: 15px; }
+    #connect { background: #4CAF50; color: white; }
+    #status  { margin-top: 16px; color: #555; }
+    .color-btn { width: 80px; height: 80px; border-radius: 50%; }
+    input[type=range] { width: 100%; margin: 12px 0; }
+  </style>
+</head>
+<body>
+  <h2>LumiBand</h2>
+  <button id="connect">Connect</button>
+  <p id="status">Not connected</p>
+
+  <div>
+    <button class="color-btn" style="background:#ff0000" onclick="setColor(255,0,0)"></button>
+    <button class="color-btn" style="background:#00cc00" onclick="setColor(0,204,0)"></button>
+    <button class="color-btn" style="background:#0080ff" onclick="setColor(0,128,255)"></button>
+    <button class="color-btn" style="background:#ff8800" onclick="setColor(255,136,0)"></button>
+    <button class="color-btn" style="background:#ffffff;border:1px solid #ccc" onclick="setColor(255,255,255)"></button>
+    <button class="color-btn" style="background:#111111" onclick="setColor(0,0,0,0)"></button>
+  </div>
+
+  <label>Brightness</label>
+  <input type="range" min="0" max="255" value="255" oninput="setBrightness(this.value)">
+
+  <div>
+    <button onclick="setPreset(0)">Classic</button>
+    <button onclick="setPreset(2)">Party</button>
+    <button onclick="setPreset(3)">Lava</button>
+    <button onclick="exitOverride()">App mode</button>
+  </div>
+
+<script>
+  const SERVICE = '4fafc201-1fb5-459e-8fcc-c5c9c331914b';
+  const CMD     = 'beb54840-36e1-4688-b7f5-ea07361b26a8';
+  const BRIGHT  = 'beb5483f-36e1-4688-b7f5-ea07361b26a8';
+  const STATUS  = 'beb54842-36e1-4688-b7f5-ea07361b26a8';
+
+  let cmdChar, brightChar;
+
+  document.getElementById('connect').onclick = async () => {
+    try {
+      const device = await navigator.bluetooth.requestDevice({
+        filters: [{ services: [SERVICE] }],
+      });
+      const server  = await device.gatt.connect();
+      const service = await server.getPrimaryService(SERVICE);
+
+      cmdChar    = await service.getCharacteristic(CMD);
+      brightChar = await service.getCharacteristic(BRIGHT);
+
+      // Status notifications
+      const statusChar = await service.getCharacteristic(STATUS);
+      await statusChar.startNotifications();
+      statusChar.addEventListener('characteristicvaluechanged', e => {
+        const v = e.target.value;
+        document.getElementById('status').textContent =
+          `mode=${v.getUint8(0)}  brightness=${v.getUint8(1)}`;
+      });
+
+      document.getElementById('status').textContent = `Connected: ${device.name}`;
+    } catch (err) {
+      console.error(err);
+      document.getElementById('status').textContent = `Error: ${err.message}`;
+    }
+  };
+
+  async function setColor(r, g, b, brightness = 255) {
+    if (!cmdChar) return;
+    await cmdChar.writeValueWithoutResponse(new Uint8Array([0x03, r, g, b, brightness]));
+  }
+
+  async function setBrightness(v) {
+    if (!brightChar) return;
+    await brightChar.writeValueWithResponse(new Uint8Array([parseInt(v)]));
+  }
+
+  async function setPreset(index) {
+    if (!cmdChar) return;
+    await cmdChar.writeValueWithResponse(new Uint8Array([0x02, index]));
+  }
+
+  async function exitOverride() {
+    if (!cmdChar) return;
+    await cmdChar.writeValueWithResponse(new Uint8Array([0x08, 0x00]));
+  }
+</script>
+</body>
+</html>
