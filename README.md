@@ -58,7 +58,9 @@ Example — pure red at 50 % brightness:
 
 > **Note:** the Brightness byte is applied directly to the hardware. It is not
 > capped by any brightness limit set in the LumiBand app — you have full
-> control from 0 (off) to 255 (maximum hardware output).
+> control from 0 (off) to 255 (maximum hardware output). Usually the bracelet
+> is only set between **5-20%** brightness. Exceeding this range will drain the
+> battery a lot faster.
 
 ---
 
