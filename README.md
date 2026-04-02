@@ -108,6 +108,37 @@ Subscribe to the **Status** characteristic to receive updates whenever the band'
 
 ---
 
+## Battery Level
+
+LumiBand exposes the standard **Bluetooth Battery Service (0x180F)**.
+
+| | |
+|---|---|
+| Service | `0000180f-0000-1000-8000-00805f9b34fb` |
+| Characteristic | `00002a19-0000-1000-8000-00805f9b34fb` |
+| Properties | Read |
+| Value | 1 byte — battery percentage 0–100 |
+
+```python
+# Python
+level = await client.read_gatt_char('00002a19-0000-1000-8000-00805f9b34fb')
+print(f'Battery: {level[0]} %')
+```
+
+```javascript
+// Web Bluetooth
+const battService = await device.gatt.getPrimaryService('battery_service');
+const battChar    = await battService.getCharacteristic('battery_level');
+const value       = await battChar.readValue();
+console.log(`Battery: ${value.getUint8(0)} %`);
+```
+
+Because it uses the standard 16-bit UUID, most generic BLE tools (nRF Connect,
+LightBlue, etc.) will display the battery level automatically without any
+configuration.
+
+---
+
 ## Connection notes
 
 - **MTU**: request 512 bytes after connecting — the band (nRF52840) supports it and improves effect upload speed
