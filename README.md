@@ -53,7 +53,7 @@ All commands are written to the **Command** characteristic.
 | `G` | green 0–255 |
 | `B` | blue 0–255 |
 | `Brightness` | 0 = off, 255 = full |
-| `Strobe` *(optional)* | 0 = steady, 1–255 = speed (1 ≈ 1 Hz slow → 255 ≈ 25 Hz fast, logarithmic) |
+| `Strobe` *(optional)* | 0 = steady, 1–255 = speed (1 ≈ 0.25 Hz slow → 255 ≈ 25 Hz fast, logarithmic) |
 
 Example — pure red at 50 % brightness, no strobe:
 ```

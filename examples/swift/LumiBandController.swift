@@ -45,7 +45,7 @@ final class LumiBandController: NSObject {
     // MARK: Commands
 
     /// Set solid colour. Values 0–255.
-    /// strobe: 0 = steady, 1–255 = speed (1 ≈ 1 Hz slow → 255 ≈ 25 Hz fast, logarithmic).
+    /// strobe: 0 = steady, 1–255 = speed (1 ≈ 0.25 Hz slow → 255 ≈ 25 Hz fast, logarithmic).
     func setColor(r: UInt8, g: UInt8, b: UInt8, brightness: UInt8 = 255, strobe: UInt8 = 0) {
         write(bytes: [0x03, r, g, b, brightness, strobe], withResponse: false)
     }
