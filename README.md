@@ -44,7 +44,7 @@ All commands are written to the **Command** characteristic.
 
 ### Set solid colour
 ```
-[0x03,  R,  G,  B,  Brightness]
+[0x03,  R,  G,  B,  Brightness,  Strobe(opt)]
 ```
 | Byte | Value |
 |------|-------|
@@ -53,10 +53,16 @@ All commands are written to the **Command** characteristic.
 | `G` | green 0–255 |
 | `B` | blue 0–255 |
 | `Brightness` | 0 = off, 255 = full |
+| `Strobe` *(optional)* | 0 = steady, 1–255 = speed (1 ≈ 1 Hz slow → 255 ≈ 25 Hz fast, logarithmic) |
 
-Example — pure red at 50 % brightness:
+Example — pure red at 50 % brightness, no strobe:
 ```
 [0x03, 255, 0, 0, 128]
+```
+
+Example — white strobe at ~10 Hz:
+```
+[0x03, 255, 255, 255, 200, 180]
 ```
 
 > **Note:** the Brightness byte is applied directly to the hardware. It is not

@@ -26,9 +26,9 @@ async def find_lumiband():
     return device
 
 
-async def set_color(client, r, g, b, brightness=255):
-    """Set solid colour. r/g/b/brightness: 0–255."""
-    await client.write_gatt_char(CMD, bytes([0x03, r, g, b, brightness]))
+async def set_color(client, r, g, b, brightness=255, strobe=0):
+    """Set solid colour. r/g/b/brightness: 0–255. strobe: 0=steady, 1-255=speed (1≈1Hz→255≈25Hz)."""
+    await client.write_gatt_char(CMD, bytes([0x03, r, g, b, brightness, strobe]))
 
 
 async def set_brightness(client, brightness):

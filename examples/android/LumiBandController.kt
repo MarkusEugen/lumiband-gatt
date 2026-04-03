@@ -65,9 +65,9 @@ class LumiBandController(private val context: Context) {
 
     // MARK: Commands
 
-    /** Set solid colour. r/g/b/brightness: 0–255. */
-    fun setColor(r: Int, g: Int, b: Int, brightness: Int = 255) {
-        write(byteArrayOf(0x03, r.toByte(), g.toByte(), b.toByte(), brightness.toByte()),
+    /** Set solid colour. r/g/b/brightness: 0–255. strobe: 0=steady, 1–255=speed (1≈1Hz→255≈25Hz). */
+    fun setColor(r: Int, g: Int, b: Int, brightness: Int = 255, strobe: Int = 0) {
+        write(byteArrayOf(0x03, r.toByte(), g.toByte(), b.toByte(), brightness.toByte(), strobe.toByte()),
               withResponse = false)
     }
 

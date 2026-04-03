@@ -37,9 +37,9 @@ export async function connect(device) {
 
 // ── Commands ──────────────────────────────────────────────────────────────────
 
-/** Set solid colour. r/g/b/brightness: 0–255. */
-export async function setColor(device, r, g, b, brightness = 255) {
-  const bytes = Buffer.from([0x03, r, g, b, brightness]);
+/** Set solid colour. r/g/b/brightness: 0–255. strobe: 0=steady, 1–255=speed (1≈1Hz→255≈25Hz). */
+export async function setColor(device, r, g, b, brightness = 255, strobe = 0) {
+  const bytes = Buffer.from([0x03, r, g, b, brightness, strobe]);
   await device.writeCharacteristicWithoutResponseForService(SERVICE, CMD, bytes.toString('base64'));
 }
 

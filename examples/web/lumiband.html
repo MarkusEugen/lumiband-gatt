@@ -30,6 +30,9 @@
   <label>Brightness</label>
   <input type="range" id="brightness" min="0" max="255" value="255" oninput="setBrightness(this.value)">
 
+  <label>Strobe (0 = off)</label>
+  <input type="range" id="strobe" min="0" max="255" value="0" oninput="sendColor()">
+
   <div>
     <button onclick="setPreset(0)">Classic</button>
     <button onclick="setPreset(2)">Party</button>
@@ -81,8 +84,9 @@
   async function sendColor() {
     if (!cmdChar) return;
     const brightness = parseInt(document.getElementById('brightness').value);
+    const strobe     = parseInt(document.getElementById('strobe').value);
     await cmdChar.writeValueWithoutResponse(
-      new Uint8Array([0x03, currentR, currentG, currentB, brightness]));
+      new Uint8Array([0x03, currentR, currentG, currentB, brightness, strobe]));
   }
 
   async function setColor(r, g, b) {
