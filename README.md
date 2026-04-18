@@ -83,6 +83,51 @@ Write a single byte to the **Brightness** characteristic (does not change colour
 
 ---
 
+### Set colour only (preserve current brightness)
+
+Read the current brightness from the **Status** characteristic first, then
+include it in the colour command.
+
+```python
+# Python (bleak)
+STATUS = 'beb54842-36e1-4688-b7f5-ea07361b26a8'
+CMD    = 'beb54840-36e1-4688-b7f5-ea07361b26a8'
+
+status     = await client.read_gatt_char(STATUS)
+brightness = status[1]
+await client.write_gatt_char(CMD, bytes([0x03, 255, 0, 0, brightness]))
+```
+
+```javascript
+// Web Bluetooth
+const status     = await statusChar.readValue();
+const brightness = status.getUint8(1);
+await cmdChar.writeValue(new Uint8Array([0x03, 255, 0, 0, brightness]));
+```
+
+```swift
+// Swift — call inside didUpdateValueFor statusCharacteristic
+let brightness = data[1]
+let payload: [UInt8] = [0x03, 255, 0, 0, brightness]
+peripheral.writeValue(Data(payload), for: cmdCharacteristic, type: .withResponse)
+```
+
+```kotlin
+// Android (Kotlin)
+val brightness = statusValue[1]
+val payload = byteArrayOf(0x03, 255.toByte(), 0, 0, brightness)
+cmdCharacteristic.value = payload
+gatt.writeCharacteristic(cmdCharacteristic)
+```
+
+> **Note:** If preserving brightness is not important, skip the Status read
+> and pass a brightness value directly:
+> ```
+> [0x03, 255, 0, 0, 128]   →  red at 50 % brightness
+> ```
+
+---
+
 ### Activate a built-in preset
 ```
 [0x02,  presetIndex]
