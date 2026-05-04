@@ -155,16 +155,28 @@ Releases any override and resumes the mode last saved on the band.
 
 Subscribe to the **Status** characteristic to receive updates whenever the band's state changes.
 
-**Payload: 2 bytes**
+**Payload: 4 bytes**
 ```
-[modeIndex, brightness]
+[modeIndex, brightness, classicColorIdx, buttonPressCount]
 ```
+
+| Byte | Field | Notes |
+|------|-------|-------|
+| `[0]` | modeIndex | See table below |
+| `[1]` | brightness | 0–255 master brightness |
+| `[2]` | classicColorIdx | Active Classic colour scheme (0–10, wraps at 9 for built-in schemes) |
+| `[3]` | buttonPressCount | Total button press counter (wraps at 255) |
 
 | modeIndex | Mode |
 |-----------|------|
-| `0` | Solid colour |
-| `1` | Preset |
-| `2` | Custom effect |
+| `0` | Classic (sound-reactive) |
+| `1` | Static |
+| `2` | Party |
+| `3` | Lava |
+| `4` | Dim |
+| `5` | Alarm |
+| `6` | Custom effect |
+| `7` | Playlist |
 
 ---
 
@@ -313,7 +325,7 @@ asyncio.run(sync_bands([
 
 ## Advanced — Custom Effect Upload
 
-Custom animations are stored in up to 8 slots on the band. Each effect is a grid of up to 8 rows × 15 LEDs with timing and sound-reactive settings.
+Custom animations are stored in up to 8 slots on the band. Each effect is a grid of up to 16 rows × 15 LEDs with timing and sound-reactive settings.
 
 See [EFFECT_UPLOAD.md](EFFECT_UPLOAD.md) for the full protocol.
 

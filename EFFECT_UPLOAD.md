@@ -16,7 +16,7 @@ Row 1: [LED0 LED1 LED2 ... LED14]
 Row N: [LED0 LED1 LED2 ... LED14]
 ```
 
-Up to **8 rows**, **15 LEDs** per row, stored in up to **8 slots** (0–7).
+Up to **16 rows**, **15 LEDs** per row, stored in up to **8 slots** (0–7).
 
 ---
 
@@ -28,7 +28,7 @@ All packets are written to the **Effect Upload** characteristic with response.
 ```
 [0x00,  slot,  numRows]
 ```
-Resets the upload buffer. `slot` = 0–7, `numRows` = 1–8.
+Resets the upload buffer. `slot` = 0–7, `numRows` = 2–16.
 
 ### Phase 2 — Data chunks
 ```
@@ -46,12 +46,13 @@ The band parses the buffer, stores the effect, and persists it to flash.
 
 ## Payload Format
 
-Total size: `numRows × 15 × 2 + 3` bytes
+Total size: `numRows × 15 × 2 + 4` bytes
 
 ```
 numRows × 15 × 2 bytes   LED colours, row-major, big-endian RGB565
 1 byte                   settings  (see below)
-2 bytes                  rowMs, big-endian uint16 (20–1000 ms per row)
+2 bytes                  rowMs, big-endian uint16 (10–1000 ms per row)
+1 byte                   refBpm (reference BPM for BPM-locked mode, 0 = unused)
 ```
 
 ### RGB565 encoding
@@ -67,17 +68,22 @@ def rgb_to_565(r, g, b):
 ```
 
 ### Settings byte
+
 ```
-bit 0   SoundMode: Beat
-bit 1   SoundMode: Level
-bit 2   SoundMode: Envelope
-bit 3   SoundMode: Always
-bit 4   LoopMode: Bounce   (reverse at end instead of wrapping)
-bit 5   LoopMode: LoopReverse  (play forward then backward continuously)
+bit 0  (0x01)  SOUND_ORGEL       Scale each LED's brightness by audio level every tick
+bit 1  (0x02)  SOUND_FLASH_BEAT  Flash entire row white for one tick on every beat
+bit 2  (0x04)  SOUND_NEXT_BEAT   Advance row on beat instead of on the row timer
+bit 3  (0x08)  SOUND_PEGEL       Select row by audio level (overrides row timer)
+bit 4  (0x10)  SOUND_BPM         Scale rowMs to live BPM (requires loop-forward)
+bit 5  (0x20)  LOOP_BOUNCE       Reverse direction at end instead of wrapping
+bit 6  (0x40)  LOOP_REVERSE      Play rows in reverse order
+bit 7  (0x80)  POV_MODE          Persistence-of-Vision: R/G/B channels strobed
+                                 sequentially at 5 ms each for streak photography
 ```
 
-Set multiple SoundMode bits to enable multiple triggers.
-`0x08` (bit 3 = Always) plays continuously regardless of sound input.
+Multiple sound mode bits can be set simultaneously.
+`SOUND_PEGEL` overrides the row timer entirely — rows are selected by audio level.
+`POV_MODE` disables all sound modes; use with Loop or Bounce for sweep effects.
 
 ---
 
@@ -90,20 +96,21 @@ from bleak import BleakClient
 SERVICE  = '4fafc201-1fb5-459e-8fcc-c5c9c331914b'
 FX_CHAR  = 'beb54841-36e1-4688-b7f5-ea07361b26a8'
 
-def build_payload(rows, row_ms=100, sound_mode=0x08):
+def build_payload(rows, row_ms=100, settings=0x00, ref_bpm=0):
     """rows: list of lists of (r, g, b) tuples, 15 LEDs each"""
     data = bytearray()
     for row in rows:
         for (r, g, b) in row:
             px = ((r >> 3) << 11) | ((g >> 3) << 5) | (b >> 3)
             data += struct.pack('>H', px)
-    data.append(sound_mode)
+    data.append(settings)
     data += struct.pack('>H', row_ms)
+    data.append(ref_bpm)
     return bytes(data)
 
-async def upload_effect(address, slot, rows, row_ms=100):
+async def upload_effect(address, slot, rows, row_ms=100, settings=0x00):
     async with BleakClient(address) as client:
-        payload = build_payload(rows, row_ms)
+        payload = build_payload(rows, row_ms, settings)
         num_rows = len(rows)
 
         # Begin
