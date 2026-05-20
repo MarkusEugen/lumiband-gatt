@@ -3,110 +3,424 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>LumiBand Web Controller</title>
+  <title>LumiBand — GATT Live Demo</title>
   <style>
-    body { font-family: sans-serif; max-width: 400px; margin: 40px auto; padding: 0 20px; }
-    button { padding: 10px 20px; margin: 6px; cursor: pointer; border-radius: 8px; border: none; font-size: 15px; }
-    #connect { background: #4CAF50; color: white; }
-    #status  { margin-top: 16px; color: #555; }
-    .color-btn { width: 80px; height: 80px; border-radius: 50%; }
-    input[type=range] { width: 100%; margin: 12px 0; }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body { height: 100%; }
+    body {
+      background: #0e0e0e;
+      color: #ddd;
+      font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+      margin: 0;
+      padding: 16px 24px 24px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Header ── */
+    .header { margin-bottom: 14px; }
+    h1 { font-size: 20px; letter-spacing: 4px; color: #fff; font-weight: normal; }
+    .sub { font-size: 10px; letter-spacing: 2px; color: #444; margin-top: 4px; }
+
+    /* ── Connect bar ── */
+    .connect-bar {
+      display: flex; align-items: center; gap: 14px; margin-bottom: 14px;
+    }
+    #connectBtn {
+      background: #1ed760; color: #000; border: none; border-radius: 6px;
+      padding: 10px 22px; font-size: 12px; font-family: inherit;
+      letter-spacing: 1px; cursor: pointer; font-weight: bold; transition: background .15s;
+    }
+    #connectBtn:hover   { background: #25f070; }
+    #connectBtn.active  { background: #333; color: #888; }
+    #connectBtn:disabled { background: #222; color: #555; cursor: default; }
+
+    .status-dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: #2a2a2a; border: 1px solid #333; flex-shrink: 0;
+      transition: background .3s;
+    }
+    .status-dot.on { background: #1ed760; border-color: #1ed760; box-shadow: 0 0 6px #1ed76088; }
+    #statusText { font-size: 12px; color: #555; }
+
+    /* ── Cards ── */
+    .card {
+      background: #161616;
+      border: 1px solid #222;
+      border-radius: 10px;
+      padding: 12px 16px;
+      margin-bottom: 8px;
+    }
+    .card-head {
+      display: flex; justify-content: space-between; align-items: baseline;
+      margin-bottom: 10px;
+    }
+    .card-title { font-size: 10px; letter-spacing: 3px; color: #666; text-transform: uppercase; }
+    .card-uuid  { font-size: 10px; color: #2a2a2a; letter-spacing: 0; }
+
+    /* ── Color ── */
+    .color-row { display: flex; align-items: center; gap: 16px; }
+    #colorPicker {
+      -webkit-appearance: none;
+      width: 52px; height: 52px;
+      border: none; border-radius: 8px; cursor: pointer;
+      background: none; padding: 2px;
+      flex-shrink: 0;
+    }
+    #colorPicker::-webkit-color-swatch-wrapper { padding: 0; border-radius: 6px; }
+    #colorPicker::-webkit-color-swatch { border: none; border-radius: 6px; }
+    #colorSwatch {
+      flex: 1; height: 52px; border-radius: 8px;
+      background: #ff0000; transition: background 60ms linear;
+      border: 1px solid #222;
+    }
+    #rgbLabel { font-size: 12px; color: #555; min-width: 120px; line-height: 1.7; }
+
+    /* ── Sliders ── */
+    .slider-row { display: flex; align-items: center; gap: 14px; }
+    input[type=range] {
+      -webkit-appearance: none; flex: 1; height: 4px; border-radius: 2px;
+      background: #2a2a2a; outline: none; cursor: pointer;
+    }
+    input[type=range]::-webkit-slider-thumb {
+      -webkit-appearance: none; width: 20px; height: 20px;
+      border-radius: 50%; background: #fff; cursor: pointer;
+      box-shadow: 0 0 0 3px #161616, 0 0 0 4px #444;
+    }
+    .slider-val { font-size: 13px; color: #888; min-width: 36px; text-align: right; }
+
+    /* ── Presets ── */
+    .preset-row { display: flex; gap: 8px; flex-wrap: wrap; }
+    .cmd-btn {
+      background: #1e1e1e; color: #aaa; border: 1px solid #2a2a2a;
+      border-radius: 6px; padding: 9px 18px; font-size: 11px;
+      font-family: inherit; letter-spacing: 1px; cursor: pointer;
+      transition: background .1s, border-color .1s, color .1s;
+    }
+    .cmd-btn:hover  { background: #282828; border-color: #444; color: #ddd; }
+    .cmd-btn:active { background: #1ed760; color: #000; border-color: #1ed760; }
+    .cmd-btn:disabled { opacity: 0.25; cursor: default; }
+
+    /* ── Write log ── */
+    #log {
+      flex: 1; overflow-y: auto; overflow-x: hidden; padding: 8px 12px;
+      background: #0a0a0a; border-radius: 6px;
+      font-size: 11px; line-height: 1.8;
+      display: flex; flex-direction: column-reverse;  /* newest on top */
+    }
+    #log-inner { display: flex; flex-direction: column-reverse; }
+    .log-row { display: flex; gap: 14px; white-space: nowrap; overflow: hidden; }
+    .log-row.sys { color: #2e2e2e; }
+    .lt  { color: #333; width: 68px; flex-shrink: 0; }
+    .lu  { color: #2e4a2e; width: 80px; flex-shrink: 0; letter-spacing: 0.5px; }
+    .lb  { color: #1ed760; flex-shrink: 0; }
+    .ll  { color: #3a3a3a; flex: 1; overflow: hidden; text-overflow: ellipsis; }
+
+    /* ── Color swatches ── */
+    .swatch-row { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+    .swatch {
+      width: 36px; height: 36px; border-radius: 50%; cursor: pointer;
+      border: 2px solid transparent; transition: transform .1s, border-color .1s;
+      flex-shrink: 0;
+    }
+    .swatch:hover  { transform: scale(1.12); }
+    .swatch:active { transform: scale(0.95); }
+    .swatch.light  { border-color: #333; }
+
+    /* ── Strobe row inside color card ── */
+    .strobe-row {
+      display: flex; align-items: center; gap: 14px; margin-top: 10px;
+      padding-top: 10px; border-top: 1px solid #1e1e1e;
+    }
+    .strobe-label { font-size: 10px; color: #444; letter-spacing: 2px; min-width: 60px; }
+
+    /* disable overlay */
+    .controls { transition: opacity .2s; }
+    .controls.disabled { opacity: 0.3; pointer-events: none; }
   </style>
 </head>
 <body>
-  <h2>LumiBand</h2>
-  <button id="connect">Connect</button>
-  <p id="status">Not connected</p>
 
-  <div>
-    <button class="color-btn" style="background:#ff0000" onclick="setColor(255,0,0)"></button>
-    <button class="color-btn" style="background:#00cc00" onclick="setColor(0,204,0)"></button>
-    <button class="color-btn" style="background:#0080ff" onclick="setColor(0,128,255)"></button>
-    <button class="color-btn" style="background:#ff8800" onclick="setColor(255,136,0)"></button>
-    <button class="color-btn" style="background:#ffffff;border:1px solid #ccc" onclick="setColor(255,255,255)"></button>
-    <button class="color-btn" style="background:#111111" onclick="setColor(0,0,0)"></button>
+<div class="header">
+  <h1>LUMIBAND</h1>
+  <div class="sub">GATT LIVE DEMO — WEB BLUETOOTH API</div>
+</div>
+
+<div class="connect-bar">
+  <button id="connectBtn">Connect</button>
+  <span class="status-dot" id="dot"></span>
+  <span id="statusText">Not connected</span>
+</div>
+
+<div class="controls disabled" id="controls">
+
+  <!-- COLOR + STROBE -->
+  <div class="card">
+    <div class="card-head">
+      <span class="card-title">Color override</span>
+      <span class="card-uuid">CMD · 0x03 · beb54840</span>
+    </div>
+    <div class="color-row">
+      <input type="color" id="colorPicker" value="#ff0000">
+      <div id="colorSwatch"></div>
+      <div id="rgbLabel">R 255<br>G 0<br>B 0</div>
+    </div>
+    <div class="swatch-row">
+      <div class="swatch" style="background:#ff0000" data-color="#ff0000" title="Red"></div>
+      <div class="swatch" style="background:#00cc44" data-color="#00cc44" title="Green"></div>
+      <div class="swatch" style="background:#0088ff" data-color="#0088ff" title="Blue"></div>
+      <div class="swatch" style="background:#ff8800" data-color="#ff8800" title="Orange"></div>
+      <div class="swatch" style="background:#cc00ff" data-color="#cc00ff" title="Purple"></div>
+      <div class="swatch light" style="background:#ffffff" data-color="#ffffff" title="White"></div>
+    </div>
+    <div class="strobe-row">
+      <span class="strobe-label">STROBE</span>
+      <input type="range" id="strobe" min="0" max="255" value="0">
+      <span class="slider-val" id="strobeVal">0</span>
+    </div>
   </div>
 
-  <label>Brightness</label>
-  <input type="range" id="brightness" min="0" max="255" value="255" oninput="setBrightness(this.value)">
-
-  <label>Strobe (0 = off)</label>
-  <input type="range" id="strobe" min="0" max="255" value="0" oninput="sendColor()">
-
-  <div>
-    <button onclick="setPreset(0)">Classic</button>
-    <button onclick="setPreset(2)">Party</button>
-    <button onclick="setPreset(3)">Lava</button>
-    <button onclick="exitOverride()">App mode</button>
+  <!-- BRIGHTNESS -->
+  <div class="card">
+    <div class="card-head">
+      <span class="card-title">Brightness</span>
+      <span class="card-uuid">beb5483f</span>
+    </div>
+    <div class="slider-row">
+      <input type="range" id="brightness" min="0" max="255" value="200">
+      <span class="slider-val" id="brightVal">200</span>
+    </div>
   </div>
+
+  <!-- COMMAND -->
+  <div class="card">
+    <div class="card-head">
+      <span class="card-title">Command</span>
+      <span class="card-uuid">CMD · 0x02 · beb54840</span>
+    </div>
+    <div class="preset-row">
+      <button class="cmd-btn" data-cmd="0x02,0x00">Classic</button>
+      <button class="cmd-btn" data-cmd="0x02,0x02">Party</button>
+      <button class="cmd-btn" data-cmd="0x02,0x03">Lava</button>
+      <button class="cmd-btn" data-cmd="0x03">Solid color</button>
+      <button class="cmd-btn" data-cmd="0x08,0x00">Exit override</button>
+    </div>
+  </div>
+
+</div><!-- /controls -->
+
+<!-- GATT WRITE LOG -->
+<div class="card" style="flex:1; display:flex; flex-direction:column; min-height:120px;">
+  <div class="card-head">
+    <span class="card-title">GATT write log</span>
+    <span class="card-uuid">live</span>
+  </div>
+  <div id="log"><div id="log-inner"></div></div>
+</div>
 
 <script>
-  const SERVICE = '4fafc201-1fb5-459e-8fcc-c5c9c331914b';
-  const CMD     = 'beb54840-36e1-4688-b7f5-ea07361b26a8';
-  const BRIGHT  = 'beb5483f-36e1-4688-b7f5-ea07361b26a8';
-  const STATUS  = 'beb54842-36e1-4688-b7f5-ea07361b26a8';
+  const SERVICE_UUID = '4fafc201-1fb5-459e-8fcc-c5c9c331914b';
+  const BRIGHT_UUID  = 'beb5483f-36e1-4688-b7f5-ea07361b26a8';
+  const CMD_UUID     = 'beb54840-36e1-4688-b7f5-ea07361b26a8';
 
-  let cmdChar;
-  let currentR = 255, currentG = 255, currentB = 255;
+  let brightChar, cmdChar;
+  let colorThrottle = null;
+  let brightThrottle = null;
+
+  // ── Connect / disconnect ─────────────────────────────────────────────────
+  const connectBtn  = document.getElementById('connectBtn');
+  const dot         = document.getElementById('dot');
+  const statusText  = document.getElementById('statusText');
+  const controlsEl  = document.getElementById('controls');
 
   if (!navigator.bluetooth) {
-    document.getElementById('status').textContent =
-      'Web Bluetooth is not supported in this browser. Use Chrome or Edge on desktop.';
-    document.getElementById('connect').disabled = true;
+    statusText.textContent = 'Web Bluetooth not supported — use Chrome or Edge on desktop';
+    connectBtn.disabled = true;
   }
 
-  document.getElementById('connect').onclick = async () => {
+  connectBtn.onclick = async () => {
+    if (brightChar) { disconnect(); return; }
     try {
+      connectBtn.disabled = true;
+      statusText.textContent = 'Scanning…';
       const device = await navigator.bluetooth.requestDevice({
-        filters: [{ services: [SERVICE] }],
+        filters: [{ services: [SERVICE_UUID] }],
       });
+      device.addEventListener('gattserverdisconnected', onDisconnect);
+
       const server  = await device.gatt.connect();
-      const service = await server.getPrimaryService(SERVICE);
+      const service = await server.getPrimaryService(SERVICE_UUID);
+      brightChar    = await service.getCharacteristic(BRIGHT_UUID);
+      cmdChar       = await service.getCharacteristic(CMD_UUID);
 
-      cmdChar = await service.getCharacteristic(CMD);
-
-      // Status notifications
-      const statusChar = await service.getCharacteristic(STATUS);
-      await statusChar.startNotifications();
-      statusChar.addEventListener('characteristicvaluechanged', e => {
-        const v = e.target.value;
-        document.getElementById('status').textContent =
-          `mode=${v.getUint8(0)}  brightness=${v.getUint8(1)}`;
-      });
-
-      document.getElementById('status').textContent = `Connected: ${device.name}`;
+      dot.classList.add('on');
+      statusText.textContent = `Connected: ${device.name}`;
+      connectBtn.textContent = 'Disconnect';
+      connectBtn.classList.add('active');
+      connectBtn.disabled = false;
+      controlsEl.classList.remove('disabled');
+      logSys(`Connected to ${device.name}`);
     } catch (err) {
-      console.error(err);
-      document.getElementById('status').textContent = `Error: ${err.message}`;
+      if (err.name !== 'NotFoundError') logSys(`Error: ${err.message}`);
+      statusText.textContent = 'Not connected';
+      connectBtn.disabled = false;
     }
   };
 
-  async function sendColor() {
+  function disconnect() {
+    brightChar = cmdChar = null;
+    dot.classList.remove('on');
+    statusText.textContent = 'Not connected';
+    connectBtn.textContent = 'Connect';
+    connectBtn.classList.remove('active');
+    controlsEl.classList.add('disabled');
+  }
+
+  function onDisconnect() { disconnect(); logSys('Disconnected'); }
+
+  // ── Color picker ─────────────────────────────────────────────────────────
+  const picker   = document.getElementById('colorPicker');
+  const swatch   = document.getElementById('colorSwatch');
+  const rgbLabel = document.getElementById('rgbLabel');
+  const strobeEl = document.getElementById('strobe');
+  const strobeVal= document.getElementById('strobeVal');
+
+  function hexToRgb(hex) {
+    return [
+      parseInt(hex.slice(1,3), 16),
+      parseInt(hex.slice(3,5), 16),
+      parseInt(hex.slice(5,7), 16),
+    ];
+  }
+
+  picker.addEventListener('input', e => {
+    const [r,g,b] = hexToRgb(e.target.value);
+    swatch.style.background = e.target.value;
+    rgbLabel.innerHTML = `R ${pad(r)}<br>G ${pad(g)}<br>B ${pad(b)}`;
+    clearTimeout(colorThrottle);
+    colorThrottle = setTimeout(() => sendColorOverride(r, g, b), 40);
+  });
+
+  strobeEl.addEventListener('input', e => {
+    strobeVal.textContent = e.target.value;
+    const [r,g,b] = hexToRgb(picker.value);
+    clearTimeout(colorThrottle);
+    colorThrottle = setTimeout(() => sendColorOverride(r, g, b), 40);
+  });
+
+  async function sendColorOverride(r, g, b) {
     if (!cmdChar) return;
     const brightness = parseInt(document.getElementById('brightness').value);
-    const strobe     = parseInt(document.getElementById('strobe').value);
-    await cmdChar.writeValueWithoutResponse(
-      new Uint8Array([0x03, currentR, currentG, currentB, brightness, strobe]));
+    const strobe     = parseInt(strobeEl.value);
+    const bytes = new Uint8Array([0x03, r, g, b, brightness, strobe]);
+    await cmdChar.writeValueWithoutResponse(bytes);
+    logWrite(CMD_UUID, bytes, `R=${r} G=${g} B=${b} Br=${brightness}${strobe ? ' St=' + strobe : ''}`);
   }
 
-  async function setColor(r, g, b) {
-    currentR = r; currentG = g; currentB = b;
-    await sendColor();
+  // ── Brightness ───────────────────────────────────────────────────────────
+  // Writes to BRIGHT char (normal modes) AND re-sends the color override packet
+  // so ovrBright in the firmware updates too (override mode uses ovrBright, not bright).
+  document.getElementById('brightness').addEventListener('input', async e => {
+    const v = parseInt(e.target.value);
+    document.getElementById('brightVal').textContent = v;
+    if (!brightChar) return;
+    clearTimeout(brightThrottle);
+    brightThrottle = setTimeout(async () => {
+      const brightBytes = new Uint8Array([v]);
+      await brightChar.writeValueWithoutResponse(brightBytes);
+      logWrite(BRIGHT_UUID, brightBytes, `Br=${v}`);
+      // Re-send color override so ovrBright is updated when in override mode.
+      const [r,g,b] = hexToRgb(picker.value);
+      await sendColorOverride(r, g, b);
+    }, 40);
+  });
+
+  // ── Command buttons ───────────────────────────────────────────────────────
+  const labels = {
+    '2,0': 'Classic preset',
+    '2,2': 'Party preset',
+    '2,3': 'Lava preset',
+    '3':   'Solid color override',
+    '8,0': 'Exit override → app mode',
+  };
+
+  document.querySelectorAll('.cmd-btn').forEach(btn => {
+    btn.onclick = async () => {
+      if (!cmdChar) return;
+      const parts  = btn.dataset.cmd.split(',').map(s => parseInt(s, 16));
+      let   bytes;
+
+      if (parts[0] === 0x03) {
+        // Solid color: send current color + brightness
+        const [r,g,b] = hexToRgb(picker.value);
+        const brightness = parseInt(document.getElementById('brightness').value);
+        const strobe     = parseInt(strobeEl.value);
+        bytes = new Uint8Array([0x03, r, g, b, brightness, strobe]);
+      } else {
+        bytes = new Uint8Array(parts);
+      }
+
+      await cmdChar.writeValueWithResponse(bytes);
+      const key = parts.join(',');
+      let label = labels[key] || '';
+      if (parts[0] === 0x03) {
+        const [r,g,b] = hexToRgb(picker.value);
+        const brightness = parseInt(document.getElementById('brightness').value);
+        const strobe     = parseInt(strobeEl.value);
+        label = `R=${r} G=${g} B=${b} Br=${brightness}${strobe ? ' St=' + strobe : ''}`;
+      }
+      logWrite(CMD_UUID, bytes, label);
+    };
+  });
+
+  // ── Write log ─────────────────────────────────────────────────────────────
+  const logInner = document.getElementById('log-inner');
+
+  function logWrite(uuid, bytes, desc) {
+    const time     = new Date().toLocaleTimeString('en', { hour12: false });
+    const shortId  = uuid.split('-')[0].toUpperCase();
+    const hexBytes = Array.from(bytes)
+      .map(b => '0x' + b.toString(16).toUpperCase().padStart(2, '0'))
+      .join(' ');
+
+    const row = document.createElement('div');
+    row.className = 'log-row';
+    row.innerHTML =
+      `<span class="lt">${time}</span>` +
+      `<span class="lu">${shortId}</span>` +
+      `<span class="lb">${hexBytes}</span>` +
+      `<span class="ll">${desc}</span>`;
+    logInner.prepend(row);
+
+    // Keep log from growing unbounded
+    while (logInner.children.length > 80) logInner.lastChild.remove();
   }
 
-  async function setBrightness(v) {
-    await sendColor();
+  function logSys(msg) {
+    const row = document.createElement('div');
+    row.className = 'log-row sys';
+    row.innerHTML = `<span class="lt">${new Date().toLocaleTimeString('en',{hour12:false})}</span><span class="ll" style="color:#333">${msg}</span>`;
+    logInner.prepend(row);
   }
 
-  async function setPreset(index) {
-    if (!cmdChar) return;
-    await cmdChar.writeValueWithResponse(new Uint8Array([0x02, index]));
-  }
+  function pad(n) { return String(n).padStart(3, ' '); }
 
-  async function exitOverride() {
-    if (!cmdChar) return;
-    await cmdChar.writeValueWithResponse(new Uint8Array([0x08, 0x00]));
-  }
+  // ── Color swatches ───────────────────────────────────────────────────────
+  document.querySelectorAll('.swatch').forEach(el => {
+    el.addEventListener('click', () => {
+      const hex = el.dataset.color;
+      picker.value = hex;
+      const [r,g,b] = hexToRgb(hex);
+      swatch.style.background = hex;
+      rgbLabel.innerHTML = `R ${pad(r)}<br>G ${pad(g)}<br>B ${pad(b)}`;
+      clearTimeout(colorThrottle);
+      colorThrottle = setTimeout(() => sendColorOverride(r, g, b), 40);
+    });
+  });
+
+  // Initialise swatch from picker default
+  swatch.style.background = picker.value;
 </script>
 </body>
 </html>
