@@ -143,11 +143,87 @@ gatt.writeCharacteristic(cmdCharacteristic)
 
 ---
 
+### Activate Custom effect mode
+Plays through uploaded effect slots in order:
+```
+[0x02, 0x06, count]
+```
+`count` = number of uploaded slots to cycle (1–8). Set the interval first if needed (see below).
+
+---
+
+### Activate Playlist mode
+Plays a named sequence of preset indices:
+```
+[0x02, 0x07, count, idx0, idx1, ..., idxN]
+```
+`count` = number of indices that follow. Set the interval first if needed (see below).
+
+---
+
+### Set slot interval
+Set how long each slot plays before advancing (applies to Custom and Playlist modes):
+```
+[0x02, 0x08, secHi, secLo]   — Playlist interval
+[0x02, 0x09, secHi, secLo]   — Custom effect interval
+```
+`secHi / secLo` = big-endian uint16, 1–3600 seconds. Send before the activate command.
+
+---
+
+### Re-sync custom slots to group clock
+Resets all devices to slot 0 at the same moment without a flash save — use this after a clock sync write to keep multiple bands frame-aligned:
+```
+[0x02, 0x0A, count]
+```
+
+---
+
 ### Exit override / return to saved mode
 ```
 [0x08, 0x00]
 ```
 Releases any override and resumes the mode last saved on the band.
+
+---
+
+### Update effect settings (no pixel re-upload)
+Change timing and behaviour of an already-uploaded effect without re-sending pixel data:
+```
+[0x06, slot, settings, rowMsHi, rowMsLo, refBpm]
+```
+| Byte | Value |
+|------|-------|
+| `slot` | effect slot 0–7 |
+| `settings` | settings bitmask (see [EFFECT_UPLOAD.md](EFFECT_UPLOAD.md)) |
+| `rowMsHi / rowMsLo` | big-endian uint16 row advance interval, 10–1000 ms |
+| `refBpm` | reference BPM for BPM-locked mode (0 = unused) |
+
+---
+
+### Alarm
+```
+[0x05, 0x01]   — Alarm ON  (overrides current mode)
+[0x05, 0x00]   — Alarm OFF (restores previous mode)
+```
+
+---
+
+### Keep-alive
+By default the band stops advertising after 5 minutes of BLE inactivity to save battery. Keep-alive disables that timer:
+```
+[0x04, 0x01]   — disable BLE sleep (keep advertising)
+[0x04, 0x00]   — re-enable BLE sleep
+```
+
+---
+
+### Super Saver
+Blanks every other LED, cutting power draw by ~50 %:
+```
+[0x10, 0x01]   — Super Saver ON
+[0x10, 0x00]   — Super Saver OFF
+```
 
 ---
 
