@@ -227,13 +227,34 @@ Blanks every other LED, cutting power draw by ~50 %:
 
 ---
 
+### Night Mode
+Locks brightness to 5 % and applies a bit-clamp on all channels for very dim ambient use (e.g. sleeping with the band on). `dimBits` selects the clamp: `3` = dim, `1` = super dim.
+```
+[0x11, 0x01, 0x03]   — Night Mode ON, dim
+[0x11, 0x01, 0x01]   — Night Mode ON, super dim
+[0x11, 0x00, 0x01]   — Night Mode OFF
+```
+Persisted in flash — the band restores the setting after a power cycle.
+
+---
+
+### DMX zone
+Assigns the band to a DMX-over-BLE zone. The band's DMX observer accepts broadcast packets from a nearby LumiBand DMX bridge; the zone gate decides which packets apply.
+```
+[0x20, 0xFF]   — no zone (respond only to global broadcasts, addr type 0x00)
+[0x20, N]      — zone N (0–254; also still responds to global broadcasts)
+```
+Persisted in flash. When DMX packets arrive, the band renders their colour+brightness and pauses its normal mode (see Status byte `[4]`). After 5 s of DMX silence, normal mode resumes automatically.
+
+---
+
 ## Status Notifications
 
 Subscribe to the **Status** characteristic to receive updates whenever the band's state changes.
 
-**Payload: 4 bytes**
+**Payload: 5 bytes**
 ```
-[modeIndex, brightness, classicColorIdx, buttonPressCount]
+[modeIndex, brightness, classicColorIdx, buttonPressCount, dmxActive]
 ```
 
 | Byte | Field | Notes |
@@ -242,6 +263,7 @@ Subscribe to the **Status** characteristic to receive updates whenever the band'
 | `[1]` | brightness | 0–255 master brightness |
 | `[2]` | classicColorIdx | Active Classic colour scheme (0–10, wraps at 9 for built-in schemes) |
 | `[3]` | buttonPressCount | Total button press counter (wraps at 255) |
+| `[4]` | dmxActive | `1` when the band is being controlled by DMX-over-BLE, `0` otherwise. Edge-triggered — one notification on entry, one on exit (5 s after DMX silence). Older clients reading only 4 bytes still see modeIndex/brightness/… correctly. |
 
 | modeIndex | Mode |
 |-----------|------|
