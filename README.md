@@ -246,6 +246,8 @@ Assigns the band to a DMX-over-BLE zone. The band's DMX observer accepts broadca
 ```
 Persisted in flash. When DMX packets arrive, the band renders their colour+brightness and pauses its normal mode (see Status byte `[4]`). After 5 s of DMX silence, normal mode resumes automatically.
 
+> For the DMX-over-Ethernet side — Art-Net / sACN protocols, channel map, bridge setup — see [DMX_BRIDGE.md](DMX_BRIDGE.md).
+
 ---
 
 ## Status Notifications
@@ -315,6 +317,14 @@ configuration.
 - **One connection at a time**: only one central can be connected simultaneously
 - **No bonding required**: the band does not require pairing or encryption
 - **Advertising name**: `LumiBand`
+
+---
+
+## Controlling LumiBand over DMX / Art-Net / sACN
+
+For stage and venue use, LumiBand supports industry-standard DMX over Ethernet. A compact Art-Net / sACN → BLE bridge receives DMX from any lighting console and broadcasts it to every band in range — no pairing, no proprietary wire protocol, no vendor controller required. Zone assignment is still done over BLE via cmd [`0x20`](#dmx-zone).
+
+See [DMX_BRIDGE.md](DMX_BRIDGE.md) for the channel map, protocol specs, multi-bridge coverage, and setup.
 
 ---
 
