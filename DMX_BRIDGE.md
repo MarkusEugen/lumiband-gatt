@@ -17,7 +17,7 @@ The band's BLE GATT API ([README.md](README.md)) continues to work in parallel â
 
 - The bridge is a passive translator: it does not connect to bands, it only broadcasts. There is no pairing, no addressing, no connection limit â€” any band in BLE range receives the broadcast and renders its own zone's slot.
 - Each bridge consumes **32 contiguous DMX channels** from a start address you set via its web UI.
-- Bands are assigned to one of **8 zones** via the GATT `0x20 DMX zone` command (see [README.md#dmx-zone](README.md)) or by a long-press gesture on the band itself.
+- Bands are assigned to one of **8 zones** via the GATT `0x20 DMX zone` command (see [README.md#dmx-zone](README.md)) or by a bridge-broadcast assignment packet (see the "BLE wire format" section below).
 
 ---
 

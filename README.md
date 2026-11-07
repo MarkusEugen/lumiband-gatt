@@ -242,7 +242,7 @@ from a backup or syncing multiple bands.
 | Byte | Value |
 |------|-------|
 | `classicColorIdx` | 0 = auto-hue (cycles through all 7 scheme hues over time); 1–8 = pinned to that colour; value modulo 9 selects the scheme. |
-| `buttonPressCount` | 8-bit press counter that drives Static palette cycling and Party sub-effect cycling (same register that a physical button short-press would increment). |
+| `buttonPressCount` | 8-bit press counter — drives Static palette cycling and Party sub-effect cycling. |
 
 Both bytes are persisted in flash. Mirrored back in Status bytes `[2]` and `[3]`.
 
@@ -328,30 +328,6 @@ Subscribe to the **Status** characteristic to receive updates whenever the band'
 | `5` | Alarm |
 | `6` | Custom effect |
 | `7` | Playlist |
-
----
-
-## Physical button behaviour
-
-Each LumiBand has a single hardware button. A **short-press** does something
-mode-specific — these changes also surface over the Status notification, so
-an integrator will see `classicColorIdx`, `buttonPressCount`, or `subIdx`
-change without having sent any BLE command.
-
-| Mode | Short-press action |
-|------|--------------------|
-| Classic  | Cycle colour scheme (`classicColorIdx++`) — Status byte `[2]` updates. |
-| Static   | Advance palette entry (`buttonPressCount++`) — Status bytes `[3]` + `[6]` update. |
-| Party    | Advance sub-effect (`buttonPressCount++`) — Status bytes `[3]` + `[6]` update. |
-| Flame    | Toggle horizontal flip of the animation (RAM-only; no Status change). |
-| Dim      | Nudge hue by 1/16 of the wheel (RAM-only; no Status change). |
-| Playlist | Skip to the next slot. |
-| Custom   | Skip to the next slot. |
-
-**Long-press** (≥ 900 ms) and **double-click** also trigger device-local
-behaviour (flashlight, address/zone config). These do not change the BLE
-protocol surface — they are mentioned here only to explain state transitions
-that may appear "out of nowhere" to a passive BLE observer.
 
 ---
 

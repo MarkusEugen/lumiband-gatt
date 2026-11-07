@@ -150,7 +150,7 @@ re-sending pixel data.
 | Byte | Meaning |
 |------|---------|
 | `classicColorIdx` | 0 = auto-hue; 1–8 = pinned to that colour scheme (value modulo 9) |
-| `buttonPressCount` | 8-bit press counter that drives Static palette cycling and Party sub-effect cycling. Same register that a physical button short-press increments. |
+| `buttonPressCount` | 8-bit press counter — drives Static palette cycling and Party sub-effect cycling. |
 
 Both bytes are flashed. Mirrored in Status bytes `[2]` and `[3]`.
 Added in firmware 1.0.
@@ -200,8 +200,8 @@ Dispatch depends on the currently-active mode:
 | Active mode | Effect |
 |-------------|--------|
 | Classic (0) | `subIdx = 255` resumes the auto-rotating story pointer; any other value pins Classic to sub-effect `subIdx % 15` (STORY_COUNT). Pin is **RAM-only** — reverts to auto on power-cycle. |
-| Static  (1) | `subIdx % 20` selects the palette entry. Same register as `buttonPressCount` — flashed. |
-| Party   (2) | `subIdx % 12` selects the party sub-effect. Same register as `buttonPressCount` — flashed. |
+| Static  (1) | `subIdx % 20` selects the palette entry. Writes `buttonPressCount` — flashed. |
+| Party   (2) | `subIdx % 12` selects the party sub-effect. Writes `buttonPressCount` — flashed. |
 | Other       | Ignored; no state change and no Status notification. |
 
 Status byte `[6]` mirrors the new value on the subsequent notify.
@@ -238,7 +238,7 @@ effect change so a client can stay in sync without polling.
 | `[2]` | classicColorIdx  | Active Classic colour-scheme pointer; value modulo 9 picks one of 9 schemes |
 | `[3]` | buttonPressCount | 8-bit press counter (wraps at 255). Drives Static palette + Party sub-effect cycling |
 | `[4]` | dmxActive        | `1` while DMX-over-BLE is driving the band, `0` otherwise. Edge-triggered: one notification on entry, one on exit (5 s after DMX silence). |
-| `[5]` | zoneId           | DMX zone, `0..7` or `0xFF` unassigned. Mirrors opcode `0x20` + the physical long-press zone-config UI. |
+| `[5]` | zoneId           | DMX zone, `0..7` or `0xFF` unassigned. Mirrors opcode `0x20`. |
 | `[6]` | subIdx           | Current sub-effect index for the active mode. Classic: `255` = auto, else 0..14. Static / Party: `buttonPressCount % N`. Other modes: `255`. Written by opcode `0x12` or physical button. |
 
 **Backward compatibility.** Clients that read only the first N bytes
@@ -317,42 +317,7 @@ unplugging USB will read higher than the eventual resting value.
 
 ---
 
-## 9. Device behaviour not driven by BLE
-
-Context useful for integrators observing Status notifications that
-appear "unprompted" — these are all local triggers at the band:
-
-**Physical button (short-press, ~30–800 ms):**
-
-| Mode | Action |
-|------|--------|
-| Classic  | `classicColorIdx++` → Status `[2]` + `[6]` change |
-| Static   | `buttonPressCount++` → Status `[3]` + `[6]` change |
-| Party    | `buttonPressCount++` → Status `[3]` + `[6]` change |
-| Flame    | Toggle horizontal flip of the animation (RAM-only; no Status change) |
-| Dim      | Nudge hue by 1/16 wheel (RAM-only; no Status change) |
-| Playlist | Skip to next slot |
-| Custom   | Skip to next slot |
-
-**Long-press (≥ 900 ms):** enters flashlight or zone-config submodes
-(DMX address configuration) depending on context. Local-only UI; no
-BLE protocol surface.
-
-**Double-click:** enters / exits flashlight mode (full-white 100 %
-brightness, locks out other commands until exited).
-
-**DMX override:** incoming DMX packets (broadcast to the band's zone)
-drive the strip directly and pause the running mode. Status byte `[4]`
-flips to `1` on entry and `0` after 5 s of DMX silence. Mode state
-survives — the band resumes the paused mode after DMX silence.
-
-**BLE sleep:** after ~5 min of no connection activity the band drops
-to a low-power state and stops advertising. Wake via power cycle or
-by sending opcode `0x04 0x01` **before** the timeout.
-
----
-
-## 10. Firmware version compatibility
+## 9. Firmware version compatibility
 
 | Firmware | Added |
 |----------|-------|
