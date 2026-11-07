@@ -10,6 +10,15 @@ are called out inline and summarised in §10.
 
 ---
 
+> **Not what you want?** This document covers the **GATT-connected**
+> protocol (one central ↔ one band, pair + write characteristics).
+> If you want to drive many bands at once without any connection —
+> the way the LumiBridge does — you want the BLE advertising
+> broadcast protocol instead. That is a separate wire format; see
+> the "**BLE wire format**" section of
+> [DMX_BRIDGE.md](DMX_BRIDGE.md) for the byte layout of all three
+> packet variants (legacy per-zone, v2 snapshot, assignment).
+
 ## 1. Overview
 
 | Property | Value |

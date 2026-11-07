@@ -99,6 +99,154 @@ For larger venues where one bridge's BLE range doesn't cover the whole floor, de
 
 ---
 
+## BLE wire format — build your own bridge
+
+If you want to drive LumiBands from your own hardware (a custom ESP32
+sketch, an nRF52 dongle, a Raspberry Pi with BlueZ, anything that can
+emit raw BLE advertising packets) you do **not** need to use the
+LumiBridge. The bands listen for a specific manufacturer-data payload
+in non-connectable BLE advertising packets and render whatever matches.
+
+**Why broadcast, not GATT?** The GATT path (see [README.md](README.md)
+and [BLE_PROTOCOL.md](BLE_PROTOCOL.md)) is one central ↔ one band.
+Great for the phone app, useless for lighting a venue of 200 bands.
+Broadcast is one-to-many, needs no pairing, has no connection limit,
+and a single packet re-transmitted at ~25 Hz keeps every band in
+range synchronised.
+
+### Advertising-packet requirements
+
+- **PDU type:** non-connectable (ADV_NONCONN_IND) is fine; connectable
+  works too but wastes airtime. 
+- **AD type:** `0xFF` (Manufacturer Specific Data).
+- **Company ID:** the first two bytes of the manufacturer-data payload
+  are `0xFF 0xFF` (little-endian). This is an "unofficial" company ID
+  used purely as a tunnel marker — bands filter on it. Not a Bluetooth
+  SIG assignment.
+- **Marker byte:** `[2] = 0x4C` (ASCII `L`). Bands ignore any
+  manufacturer packet without this.
+- **Packet type byte:** `[3]` selects which of the three packet
+  variants is being sent (see below).
+- **Re-send cadence:** the production bridge broadcasts at ~25 Hz
+  (40 ms interval). Bands scan at 100 % duty cycle with the scanner
+  only paused during their own peripheral advertising, so one packet
+  per DMX frame is enough.
+
+### Packet variant 1 — legacy per-zone (9 bytes)
+
+Carries one zone's colour + brightness. Original format, still
+supported for backward compatibility with older bridges.
+
+```
+Byte  Value   Meaning
+[0]   0xFF    Company ID (LE) 0xFFFF
+[1]   0xFF
+[2]   0x4C    'L' marker
+[3]   addr    0x00 = global (every band matches)
+              0x01 = zone-specific (match when [4] == band's zoneId)
+[4]   zone    Zone id, 0..7 (only when [3] == 0x01)
+[5]   R       Red,        0..255
+[6]   G       Green,      0..255
+[7]   B       Blue,       0..255
+[8]   Bright  Brightness, 0..255
+```
+
+If you have only one "zone" in your scene, broadcast with
+`[3] = 0x00` and every band in range will render your RGB+brightness
+regardless of its assigned zone. For per-zone control, send one
+packet per zone with `[3] = 0x01` and `[4] = <zoneId>`.
+
+### Packet variant 2 — zone snapshot (29 bytes)
+
+What the production bridge actually emits. Carries **all 8 zones**
+of RGB in one packet, so a single 40 ms re-broadcast keeps the whole
+venue painted. No per-zone brightness (raw RGB; the band's master
+brightness still applies).
+
+```
+Byte       Value   Meaning
+[0..1]     0xFF 0xFF   Company ID
+[2]        0x4C        'L' marker
+[3]        0x02        v2 snapshot marker
+[4+z*3+0]  R           Zone z's red
+[4+z*3+1]  G           Zone z's green
+[4+z*3+2]  B           Zone z's blue     (z = 0..7)
+```
+
+Total payload: 4 + 24 = 28 bytes of manufacturer data (fits the 29-byte
+legacy-advertising cap). Bands with `zoneId <= 7` pick out their three
+bytes; bands with `zoneId = 0xFF` (unassigned) render zone 0.
+
+### Packet variant 3 — zone assignment (5 bytes)
+
+Mass-provisioning signal. A band that receives this packet
+**unconditionally adopts** the advertised zone, persists it to flash,
+and shows a colour-bar zone-number display on its LEDs as an operator
+confirmation (display stays on until the band is powered off).
+
+```
+Byte  Value   Meaning
+[0]   0xFF    Company ID
+[1]   0xFF
+[2]   0x4C    'L' marker
+[3]   0x03    Assignment marker
+[4]   zone    Target zone, 0..7
+```
+
+Use case: a bridge in "provisioning mode" (operator action) sends only
+this packet variant for a brief window; every band powered on near the
+bridge during that window receives it and self-assigns to the given
+zone. Lets you re-provision a pile of pre-assigned bands without
+handling each one individually.
+
+Assignment packets do **NOT** flip the band into DMX-locked mode —
+they only write the zone. The band keeps running whatever preset /
+Custom / Playlist was previously active. To actually light the band
+from DMX, follow up with variant 1 or 2 packets.
+
+### Band-side behaviour after first match
+
+The first packet (variant 1 or 2) that passes filtering latches the
+band into **DMX lockout** mode:
+
+- Band stops BLE advertising and force-disconnects any connected phone
+  (scanner-only dedicates the radio to listening for the next DMX
+  packet).
+- Band sets `dmxActive = true`, notifies its Status characteristic (so
+  any observer that was previously connected sees byte `[4] = 1`).
+- Band **never automatically exits** DMX mode until the next power
+  cycle. A brief packet gap doesn't drop the lock — the band keeps
+  rendering the last-known RGB/brightness. This is deliberate; ad-hoc
+  recovery when packets stop would create flicker on crowded airwaves.
+- If no further DMX is heard after 5 s, the Status byte `[4]`
+  transitions back to `0` to notify any still-connected GATT observers
+  (edge-triggered notification), but the lockout itself persists.
+
+### Minimal reference implementation (Python + bluepy on Linux)
+
+Linux doesn't expose raw BLE advertising through BlueZ's D-Bus layer
+cleanly, so most prototypes use a small helper like `bless` or raw
+HCI commands. Here's the shape of the advertising payload builder;
+drop it into whatever stack you already have:
+
+```python
+def make_snapshot_packet(zone_rgbs: list[tuple[int, int, int]]) -> bytes:
+    """Build a v2 snapshot payload for zones 0..7. Pad with (0,0,0) for
+    unused zones. Returns the manufacturer-data bytes (not the full
+    HCI advertising frame — wrap according to your BLE stack)."""
+    assert 1 <= len(zone_rgbs) <= 8
+    pkt = bytearray([0xFF, 0xFF, 0x4C, 0x02])
+    for i in range(8):
+        r, g, b = zone_rgbs[i] if i < len(zone_rgbs) else (0, 0, 0)
+        pkt += bytes([r & 0xFF, g & 0xFF, b & 0xFF])
+    return bytes(pkt)   # 28 bytes
+```
+
+Re-broadcast this payload at ~25 Hz with the AD type set to `0xFF`
+(Manufacturer Specific Data). Any LumiBand in range will render.
+
+---
+
 ## Technical summary
 
 | | |

@@ -7,6 +7,12 @@ This document is everything a developer needs to control it from any platform.
 > — every opcode, every byte, every status field in one reference. Use that
 > for implementing a new client; use this README for a tutorial-flavoured
 > walk-through plus copy-paste examples in Python / Swift / Kotlin / JS.
+>
+> **Building your own bridge / driving many bands at once?** The GATT
+> flow in this README is one-to-one. For one-to-many without pairing
+> (the way the LumiBridge works internally), use the BLE advertising
+> broadcast protocol — byte-level packet layout documented in the
+> "BLE wire format" section of [DMX_BRIDGE.md](DMX_BRIDGE.md).
 
 **LumiBand is currently in Kickstarter funding**, see this [link](https://lumicense.wavelights.de/?utm_source=github&utm_medium=referral&utm_campaign=kickstarter_2026)
 
