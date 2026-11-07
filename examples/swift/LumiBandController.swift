@@ -57,7 +57,7 @@ final class LumiBandController: NSObject {
     }
 
     /// Activate a built-in preset.
-    /// 0 = Classic, 1 = Static, 2 = Party, 3 = Lava, 4 = Dim
+    /// 0 = Classic, 1 = Static, 2 = Party, 3 = Flame, 4 = Dim
     func setPreset(_ index: UInt8) {
         write(bytes: [0x02, index], withResponse: true)
     }

@@ -79,7 +79,7 @@ class LumiBandController(private val context: Context) {
 
     /**
      * Activate a built-in preset.
-     * 0 = Classic, 1 = Static, 2 = Party, 3 = Lava, 4 = Dim
+     * 0 = Classic, 1 = Static, 2 = Party, 3 = Flame, 4 = Dim
      */
     fun setPreset(index: Int) {
         write(byteArrayOf(0x02, index.toByte()), withResponse = true)

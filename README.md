@@ -3,6 +3,11 @@
 LumiBand is a wearable LED band controlled over BLE.
 This document is everything a developer needs to control it from any platform.
 
+> **Looking for the formal byte-level spec?** See [BLE_PROTOCOL.md](BLE_PROTOCOL.md)
+> — every opcode, every byte, every status field in one reference. Use that
+> for implementing a new client; use this README for a tutorial-flavoured
+> walk-through plus copy-paste examples in Python / Swift / Kotlin / JS.
+
 **LumiBand is currently in Kickstarter funding**, see this [link](https://lumicense.wavelights.de/?utm_source=github&utm_medium=referral&utm_campaign=kickstarter_2026)
 
 ---
@@ -138,8 +143,28 @@ gatt.writeCharacteristic(cmdCharacteristic)
 | `0` | Classic — sound-reactive with beat detection |
 | `1` | Static |
 | `2` | Party |
-| `3` | Lava |
+| `3` | Flame |
 | `4` | Dim |
+
+---
+
+### Set sub-effect
+```
+[0x12, subIdx]
+```
+Picks a specific sub-effect inside whichever mode is currently active. The
+firmware dispatches `subIdx` to the right state variable based on `activeMode`:
+
+| Active mode | Behaviour |
+|-------------|-----------|
+| Classic (0) | `subIdx = 255` resumes auto-rotation; any other value pins Classic to sub-effect `subIdx % 15`. |
+| Static (1)  | `subIdx % 20` selects the palette entry. |
+| Party (2)   | `subIdx % 12` selects the party sub-effect. |
+| Other       | Ignored (safely). |
+
+The new sub-effect index is reported back on the Status characteristic byte `[6]`
+(see below). Pinned Classic sub-effect is **RAM-only** — the band reverts to auto
+on power-cycle. Static/Party changes are persisted in flash via `buttonPressCount`.
 
 ---
 
@@ -201,6 +226,22 @@ Change timing and behaviour of an already-uploaded effect without re-sending pix
 
 ---
 
+### Set Classic colour scheme + button count
+```
+[0x07, classicColorIdx, buttonPressCount]
+```
+Writes both Classic-engine state bytes at once. Useful when restoring state
+from a backup or syncing multiple bands.
+
+| Byte | Value |
+|------|-------|
+| `classicColorIdx` | 0 = auto-hue (cycles through all 7 scheme hues over time); 1–8 = pinned to that colour; value modulo 9 selects the scheme. |
+| `buttonPressCount` | 8-bit press counter that drives Static palette cycling and Party sub-effect cycling (same register that a physical button short-press would increment). |
+
+Both bytes are persisted in flash. Mirrored back in Status bytes `[2]` and `[3]`.
+
+---
+
 ### Alarm
 ```
 [0x05, 0x01]   — Alarm ON  (overrides current mode)
@@ -254,9 +295,9 @@ Persisted in flash. When DMX packets arrive, the band renders their colour+brigh
 
 Subscribe to the **Status** characteristic to receive updates whenever the band's state changes.
 
-**Payload: 5 bytes**
+**Payload: 7 bytes** (older firmware: 4, 5, or 6 — see version notes below)
 ```
-[modeIndex, brightness, classicColorIdx, buttonPressCount, dmxActive]
+[modeIndex, brightness, classicColorIdx, buttonPressCount, dmxActive, zoneId, subIdx]
 ```
 
 | Byte | Field | Notes |
@@ -265,18 +306,46 @@ Subscribe to the **Status** characteristic to receive updates whenever the band'
 | `[1]` | brightness | 0–255 master brightness |
 | `[2]` | classicColorIdx | Active Classic colour scheme (0–10, wraps at 9 for built-in schemes) |
 | `[3]` | buttonPressCount | Total button press counter (wraps at 255) |
-| `[4]` | dmxActive | `1` when the band is being controlled by DMX-over-BLE, `0` otherwise. Edge-triggered — one notification on entry, one on exit (5 s after DMX silence). Older clients reading only 4 bytes still see modeIndex/brightness/… correctly. |
+| `[4]` | dmxActive | `1` when the band is being controlled by DMX-over-BLE, `0` otherwise. Edge-triggered — one notification on entry, one on exit (5 s after DMX silence). |
+| `[5]` | zoneId | Current DMX zone (`0..7`) or `0xFF` for unassigned (band responds only to global broadcasts). Mirrors cmd `0x20`. |
+| `[6]` | subIdx | Current sub-effect index for the active mode. For Classic: `255` = auto-rotating, else the pinned sub-effect (0–14). For Static: `buttonPressCount % 20` (palette entry). For Party: `buttonPressCount % 12` (sub-effect). Other modes: `255` (n/a). Written by cmd `0x12`. |
+
+> **Backward compatibility:** older clients that only read the first 2/4/5/6 bytes will still see valid earlier fields — the firmware notifies the full 7-byte payload but earlier slices remain correct. Firmware < 1.1 doesn't emit bytes [5-6]; firmware < 1.0+ doesn't emit byte [4].
 
 | modeIndex | Mode |
 |-----------|------|
 | `0` | Classic (sound-reactive) |
 | `1` | Static |
 | `2` | Party |
-| `3` | Lava |
+| `3` | Flame |
 | `4` | Dim |
 | `5` | Alarm |
 | `6` | Custom effect |
 | `7` | Playlist |
+
+---
+
+## Physical button behaviour
+
+Each LumiBand has a single hardware button. A **short-press** does something
+mode-specific — these changes also surface over the Status notification, so
+an integrator will see `classicColorIdx`, `buttonPressCount`, or `subIdx`
+change without having sent any BLE command.
+
+| Mode | Short-press action |
+|------|--------------------|
+| Classic  | Cycle colour scheme (`classicColorIdx++`) — Status byte `[2]` updates. |
+| Static   | Advance palette entry (`buttonPressCount++`) — Status bytes `[3]` + `[6]` update. |
+| Party    | Advance sub-effect (`buttonPressCount++`) — Status bytes `[3]` + `[6]` update. |
+| Flame    | Toggle horizontal flip of the animation (RAM-only; no Status change). |
+| Dim      | Nudge hue by 1/16 of the wheel (RAM-only; no Status change). |
+| Playlist | Skip to the next slot. |
+| Custom   | Skip to the next slot. |
+
+**Long-press** (≥ 900 ms) and **double-click** also trigger device-local
+behaviour (flashlight, address/zone config). These do not change the BLE
+protocol surface — they are mentioned here only to explain state transitions
+that may appear "out of nowhere" to a passive BLE observer.
 
 ---
 

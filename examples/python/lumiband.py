@@ -37,8 +37,19 @@ async def set_brightness(client, brightness):
 
 
 async def set_preset(client, index):
-    """Activate a built-in preset (0=Classic, 1=Static, 2=Party, 3=Lava, 4=Dim)."""
+    """Activate a built-in preset (0=Classic, 1=Static, 2=Party, 3=Flame, 4=Dim)."""
     await client.write_gatt_char(CMD, bytes([0x02, index]))
+
+
+async def set_sub_effect(client, sub_idx):
+    """Pin a sub-effect inside the currently-active mode (0x12).
+
+    Classic: sub_idx=255 resumes auto-rotation, else pins sub-effect (0..14).
+    Static:  sub_idx % 20 selects the palette entry.
+    Party:   sub_idx % 12 selects the party sub-effect.
+    Other modes ignore the command.
+    """
+    await client.write_gatt_char(CMD, bytes([0x12, sub_idx & 0xFF]))
 
 
 async def exit_override(client):
@@ -52,9 +63,30 @@ async def read_battery(client):
     return val[0]
 
 
+MODE_NAMES = {
+    0: 'Classic', 1: 'Static', 2: 'Party',   3: 'Flame',
+    4: 'Dim',     5: 'Alarm',  6: 'Custom',  7: 'Playlist',
+}
+
+
 def on_status(_, data):
-    mode, bright = data[0], data[1]
-    print(f'Status — mode={mode}  brightness={bright}')
+    """Parse the 7-byte Status payload (firmware 1.2+).
+
+    Older firmware emits 4-, 5-, or 6-byte payloads; missing bytes are
+    treated as "unknown" (printed as ?) so the callback never crashes.
+    """
+    b = list(data)
+    n = len(b)
+    mode    = b[0] if n > 0 else '?'
+    bright  = b[1] if n > 1 else '?'
+    colIdx  = b[2] if n > 2 else '?'
+    btnCnt  = b[3] if n > 3 else '?'
+    dmx     = b[4] if n > 4 else '?'
+    zone    = b[5] if n > 5 else '?'
+    subIdx  = b[6] if n > 6 else '?'
+    name    = MODE_NAMES.get(mode, f'mode{mode}') if isinstance(mode, int) else '?'
+    print(f'Status — {name:<8} bright={bright} colIdx={colIdx} '
+          f'btn={btnCnt} dmx={dmx} zone={zone} subIdx={subIdx}')
 
 
 async def main():

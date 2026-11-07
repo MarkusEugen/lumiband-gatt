@@ -49,7 +49,7 @@ export async function setBrightness(device, brightness) {
   await device.writeCharacteristicWithResponseForService(SERVICE, BRIGHT, bytes.toString('base64'));
 }
 
-/** Activate a built-in preset (0=Classic, 1=Static, 2=Party, 3=Lava, 4=Dim). */
+/** Activate a built-in preset (0=Classic, 1=Static, 2=Party, 3=Flame, 4=Dim). */
 export async function setPreset(device, index) {
   const bytes = Buffer.from([0x02, index]);
   await device.writeCharacteristicWithResponseForService(SERVICE, CMD, bytes.toString('base64'));
