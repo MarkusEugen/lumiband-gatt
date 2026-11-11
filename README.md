@@ -297,17 +297,30 @@ Persisted in flash. When DMX packets arrive, the band renders their colour+brigh
 
 ---
 
+### Lock to fixed colour
+Forces the band to render a single colour and blocks the physical button + most colour-mutating opcodes until unlocked. Operator feature — shipped in firmware 1.3.
+```
+[0x13, 1, R, G, B, Bright]   — lock to R/G/B at the given brightness
+[0x13, 0]                    — unlock, resume saved mode
+```
+Persisted in flash (survives power cycles). While locked the band ignores button presses and GATT cmds `0x02 / 0x03 / 0x06 / 0x07 / 0x12`. Alarm, DMX streaming and this opcode itself stay accepted. Status bytes `[7..10]` mirror the lock state.
+
+> The DMX-BLE bridge can also lock/unlock an entire zone via broadcast variants `0x04` / `0x05` — see [DMX_BRIDGE.md](DMX_BRIDGE.md).
+
+---
+
 ## Status Notifications
 
 Subscribe to the **Status** characteristic to receive updates whenever the band's state changes.
 
-**Payload: 7 bytes** (older firmware: 4, 5, or 6 — see version notes below)
+**Payload: 11 bytes** (older firmware: 4, 5, 6 or 7 — see version notes below)
 ```
-[modeIndex, brightness, classicColorIdx, buttonPressCount, dmxActive, zoneId, subIdx]
+[modeIndex, brightness, classicColorIdx, buttonPressCount, dmxActive,
+ zoneId, subIdx, lockedActive, lockedR, lockedG, lockedB]
 ```
 
-| Byte | Field | Notes |
-|------|-------|-------|
+| Byte  | Field | Notes |
+|-------|-------|-------|
 | `[0]` | modeIndex | See table below |
 | `[1]` | brightness | 0–255 master brightness |
 | `[2]` | classicColorIdx | Active Classic colour scheme (0–10, wraps at 9 for built-in schemes) |
@@ -315,8 +328,12 @@ Subscribe to the **Status** characteristic to receive updates whenever the band'
 | `[4]` | dmxActive | `1` when the band is being controlled by DMX-over-BLE, `0` otherwise. Edge-triggered — one notification on entry, one on exit (5 s after DMX silence). |
 | `[5]` | zoneId | Current DMX zone (`0..7`) or `0xFF` for unassigned (band responds only to global broadcasts). Mirrors cmd `0x20`. |
 | `[6]` | subIdx | Current sub-effect index for the active mode. For Classic: `255` = auto-rotating, else the pinned sub-effect (0–14). For Static: `buttonPressCount % 20` (palette entry). For Party: `buttonPressCount % 12` (sub-effect). Other modes: `255` (n/a). Written by cmd `0x12`. |
+| `[7]` | lockedActive | `1` while the band is locked to a fixed colour (cmd `0x13` or bridge broadcast variant `0x04`), `0` otherwise. |
+| `[8]` | lockedR | Locked-colour red channel (valid when `[7] == 1`; otherwise reflects the last-saved value). |
+| `[9]` | lockedG | Locked-colour green channel. |
+| `[10]`| lockedB | Locked-colour blue channel. |
 
-> **Backward compatibility:** older clients that only read the first 2/4/5/6 bytes will still see valid earlier fields — the firmware notifies the full 7-byte payload but earlier slices remain correct. Firmware < 1.1 doesn't emit bytes [5-6]; firmware < 1.0+ doesn't emit byte [4].
+> **Backward compatibility:** older clients that only read the first 2/4/5/6/7 bytes will still see valid earlier fields — the firmware notifies the full 11-byte payload but earlier slices remain correct. Firmware < 1.3 doesn't emit bytes [7-10]; firmware < 1.1 doesn't emit bytes [5-6]; firmware < 1.0+ doesn't emit byte [4].
 
 | modeIndex | Mode |
 |-----------|------|

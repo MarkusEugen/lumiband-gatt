@@ -204,6 +204,78 @@ they only write the zone. The band keeps running whatever preset /
 Custom / Playlist was previously active. To actually light the band
 from DMX, follow up with variant 1 or 2 packets.
 
+### Packet variant 4 — lock colour (9 bytes)
+
+Operator-triggered persistent colour lock. A band whose `zoneId`
+matches the packet's target zone (or when target zone is `0xFF`, any
+band) sets `lockedActive = true`, stores the advertised RGB +
+brightness, and persists the lot to flash. The band immediately
+renders the locked colour and ignores the physical button plus GATT
+opcodes that would change the colour (see
+[BLE_PROTOCOL.md §0x13](BLE_PROTOCOL.md)).
+
+```
+Byte  Value   Meaning
+[0]   0xFF    Company ID
+[1]   0xFF
+[2]   0x4C    'L' marker
+[3]   0x04    Lock-colour marker
+[4]   zone    Target zone, 0..7 — or 0xFF for "all zones"
+[5]   R       Lock colour red   (0–255)
+[6]   G       Lock colour green (0–255)
+[7]   B       Lock colour blue  (0–255)
+[8]   Bright  Brightness while locked (0–255)
+```
+
+Use case: operator-driven provisioning. The reference bridge
+broadcasts this packet **continuously** while a lock-colour cue is
+active on the web UI — operators pick a colour, then power on the
+bands that should receive it. Changing the colour on the bridge
+re-broadcasts the new payload, and any band in range switches to
+match. Bands flash-save on receipt and keep the lock across power
+cycles. Receivers **MUST** debounce on payload change — acting on
+every advert would hammer the flash during a long cue.
+
+(The bridge can also emit a short one-shot burst of this variant for
+single-band ops; both cadences are valid wire-level — only the
+operator UX differs.)
+
+Lock packets do **NOT** flip the band into DMX-locked mode — the band
+continues to advertise and can be unlocked via the phone app (GATT
+`0x13`) or via variant 5 below. Lock sits ABOVE DMX in the band's
+render precedence, so an active lock cue wins over any ongoing DMX
+stream until the band is explicitly unlocked (either via GATT `0x13`
+or variant 5 below).
+
+### Packet variant 5 — unlock colour (5 bytes)
+
+Full release signal. On matching bands, clears **all three** sticky
+flags that would otherwise override the saved mode:
+
+* `lockedActive` → false (persisted to flash)
+* `dmxActive`    → false (RAM-only, releases the DMX-render latch)
+* `dmxLockout`   → false (RAM-only, re-enables BLE advertising so the
+  phone can reconnect)
+
+The band then resumes its saved mode (preset / Custom / Playlist) on
+the next render tick. "Unlock colour" is a slight misnomer — it's
+effectively a "release everything" signal — but kept for wire-format
+backward-compat with 1.3 bands.
+
+```
+Byte  Value   Meaning
+[0]   0xFF    Company ID
+[1]   0xFF
+[2]   0x4C    'L' marker
+[3]   0x05    Unlock-colour marker
+[4]   zone    Target zone, 0..7 — or 0xFF for "all zones"
+```
+
+Typically broadcast in a short burst (seconds) — the reference bridge
+fires a ~10 s burst when the operator presses the "Unlock all" button.
+Unlocking an already-unlocked band is a no-op; receivers should still
+debounce (act on the lockedActive → false transition only).
+
 ### Band-side behaviour after first match
 
 The first packet (variant 1 or 2) that passes filtering latches the

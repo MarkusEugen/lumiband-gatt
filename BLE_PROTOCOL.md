@@ -77,6 +77,7 @@ Legend:
 | `0x10` | Super saver                    | 2     | Flash   | — |
 | `0x11` | Night mode                     | 3     | Flash   | — |
 | `0x12` | Sub-effect picker              | 2     | Mixed   | ✓ |
+| `0x13` | Lock colour                    | 2 or 6 | Flash   | ✓ |
 | `0x20` | DMX zone                       | 2     | Flash   | ✓ |
 
 ### 0x02 — Activate mode / sub-command
@@ -206,6 +207,49 @@ Dispatch depends on the currently-active mode:
 
 Status byte `[6]` mirrors the new value on the subsequent notify.
 
+### 0x13 — Lock colour (NEW in 1.3)
+
+```
+[0x13, 1, R, G, B, Bright]    — lock: render solid R/G/B at Bright
+[0x13, 0]                     — unlock: resume saved mode
+```
+
+| Byte | Meaning |
+|------|---------|
+| `d[1]` | `1` = lock, `0` = unlock. All other values treated as unlock. |
+| `R, G, B` | Lock colour, 0–255 each. Required when locking. |
+| `Bright` | Master brightness applied while locked, 0–255. |
+
+While locked, the firmware **ignores** these events:
+
+- the physical button (click, double-click, long-press, super-long);
+- GATT opcodes `0x02` (mode change), `0x03` (solid-colour override),
+  `0x06` (per-slot timing), `0x07` (Classic colour / button counter),
+  and `0x12` (sub-effect picker).
+
+Opcodes that do not change the rendered colour — `0x04` keep-alive,
+`0x05` alarm, `0x10` super saver, `0x11` night mode, `0x20` DMX zone,
+and `0x13` itself — remain accepted. Brightness writes remain accepted
+(the effective brightness is still `lockedBright`; the characteristic
+just updates the "saved" value that returns on unlock).
+
+**Precedence.** `alarm > colour override (0x03) > lock > DMX > mode`.
+Lock sits above DMX because the band's `dmxActive` flag latches true for
+the lifetime of a power cycle — a band that ever saw DMX would otherwise
+keep rendering stale DMX colour even after the bridge switched to
+broadcasting a lock cue. In practice this means a live lock always
+displays, even if a DMX stream was running earlier in the session.
+
+**Persistence.** Lock state (flag + RGB + brightness) is flashed and
+restored on power-cycle. An unlock-only payload also persists.
+
+**Status notification.** Fires on every `0x13` write. Status bytes
+`[7..10]` carry the new lock state.
+
+**Bridge equivalent.** The DMX-BLE bridge can trigger the same lock
+state on a whole zone via its broadcast packet format — see
+[DMX_BRIDGE.md](DMX_BRIDGE.md) §Packet variants 4 and 5.
+
 ### 0x20 — DMX zone
 
 ```
@@ -221,18 +265,19 @@ Persisted in flash. Status byte `[5]` mirrors the current value.
 
 ---
 
-## 4. Status characteristic — 7-byte layout
+## 4. Status characteristic — 11-byte layout
 
 Subscribe to notifications to track the band's state. The band also
 pushes a notification on every mode / brightness / DMX / zone / sub-
-effect change so a client can stay in sync without polling.
+effect / lock change so a client can stay in sync without polling.
 
 ```
-[modeIndex, brightness, classicColorIdx, buttonPressCount, dmxActive, zoneId, subIdx]
+[modeIndex, brightness, classicColorIdx, buttonPressCount, dmxActive,
+ zoneId, subIdx, lockedActive, lockedR, lockedG, lockedB]
 ```
 
-| Byte | Field | Meaning |
-|------|-------|---------|
+| Byte  | Field | Meaning |
+|-------|-------|---------|
 | `[0]` | modeIndex        | 0 = Classic, 1 = Static, 2 = Party, 3 = Flame, 4 = Dim, 5 = Alarm, 6 = Custom, 7 = Playlist |
 | `[1]` | brightness       | 0–255 master brightness |
 | `[2]` | classicColorIdx  | Active Classic colour-scheme pointer; value modulo 9 picks one of 9 schemes |
@@ -240,12 +285,16 @@ effect change so a client can stay in sync without polling.
 | `[4]` | dmxActive        | `1` while DMX-over-BLE is driving the band, `0` otherwise. Edge-triggered: one notification on entry, one on exit (5 s after DMX silence). |
 | `[5]` | zoneId           | DMX zone, `0..7` or `0xFF` unassigned. Mirrors opcode `0x20`. |
 | `[6]` | subIdx           | Current sub-effect index for the active mode. Classic: `255` = auto, else 0..14. Static / Party: `buttonPressCount % N`. Other modes: `255`. Written by opcode `0x12` or physical button. |
+| `[7]` | lockedActive     | `1` while the band is locked to a fixed colour (see opcode `0x13` and bridge variant `0x04`), `0` otherwise. |
+| `[8]` | lockedR          | Locked colour red channel (valid when `[7] == 1`; otherwise reflects the last-saved lock colour). |
+| `[9]` | lockedG          | Locked colour green channel. |
+| `[10]`| lockedB          | Locked colour blue channel. |
 
 **Backward compatibility.** Clients that read only the first N bytes
-(for N < 7) still see valid earlier fields. Firmware < 1.1 doesn't
-emit bytes `[5..6]`; firmware < 1.0+ doesn't emit byte `[4]`.
-Read defensively: `len = min(available, 7)` and treat missing bytes
-as "unknown".
+(for N < 11) still see valid earlier fields. Firmware < 1.3 doesn't
+emit bytes `[7..10]`; firmware < 1.1 doesn't emit bytes `[5..6]`;
+firmware < 1.0+ doesn't emit byte `[4]`. Read defensively:
+`len = min(available, 11)` and treat missing bytes as "unknown".
 
 ---
 
@@ -325,9 +374,10 @@ unplugging USB will read higher than the eventual resting value.
 | 1.0+ | Opcodes `0x10` (super saver), `0x11` (night mode) |
 | 1.1  | Opcode `0x20` (DMX zone), Status byte `[4]` (dmxActive), Status byte `[5]` (zoneId) |
 | 1.2  | Opcode `0x12` (sub-effect picker), Status byte `[6]` (subIdx), `Lava` renamed to `Flame` (byte value 3 unchanged) |
+| 1.3  | Opcode `0x13` (lock colour), Status bytes `[7..10]` (lockedActive + RGB), bridge broadcast variants `0x04` / `0x05` |
 
 Clients implementing graceful degradation should prefer a "read what
 is there, ignore what is not" pattern: write newer opcodes
 unconditionally (older firmware ignores unknown bytes), read Status
-with `min(available, 7)`, and never assume fields beyond the
+with `min(available, 11)`, and never assume fields beyond the
 firmware version you targeted.
